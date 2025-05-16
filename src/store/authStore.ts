@@ -20,6 +20,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  checkingAuth: boolean; // Add this flag to prevent infinite loops
   login: (role: UserRole, credentials: { username: string; password: string }) => Promise<void>;
   register: (role: UserRole, userData: any) => Promise<void>;
   logout: () => void;
@@ -34,6 +35,7 @@ const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      checkingAuth: false, // Add this flag initialized to false
       
       login: async (role, credentials) => {
         set({ isLoading: true, error: null });
@@ -93,11 +95,16 @@ const useAuthStore = create<AuthState>()(
       },
       
       checkAuth: async () => {
-        set({ isLoading: true });
+        // Check if we're already in the process of checking auth
+        if (get().checkingAuth || get().isLoading) {
+          return;
+        }
+        
+        set({ isLoading: true, checkingAuth: true });
         const token = localStorage.getItem('token');
         
         if (!token) {
-          set({ isLoading: false });
+          set({ isLoading: false, checkingAuth: false });
           return;
         }
         
@@ -106,14 +113,16 @@ const useAuthStore = create<AuthState>()(
           set({ 
             user: data.user,
             isAuthenticated: true,
-            isLoading: false
+            isLoading: false,
+            checkingAuth: false
           });
         } catch (error) {
           set({ 
             token: null,
             user: null,
             isAuthenticated: false,
-            isLoading: false
+            isLoading: false,
+            checkingAuth: false
           });
           localStorage.removeItem('token');
         }

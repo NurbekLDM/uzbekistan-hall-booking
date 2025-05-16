@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Building, Calendar, Check, Users } from 'lucide-react';
@@ -26,7 +25,11 @@ const OwnerDashboard = () => {
   }, [fetchHalls, fetchHallBookings]);
 
   // Mocked owner's halls (would normally be filtered from API)
-  const ownerHalls = filteredHalls.filter(hall => hall.owner?.id === user?.id);
+  // Fix: Check if ownerId exists and is a string before comparing
+  const ownerHalls = filteredHalls.filter(hall => {
+    if (!user) return false;
+    return hall.ownerId === user.id;
+  });
 
   const handleCancelBooking = async (id: string) => {
     try {
