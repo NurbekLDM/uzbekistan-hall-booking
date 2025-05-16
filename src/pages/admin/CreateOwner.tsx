@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -15,7 +14,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import MainLayout from '@/components/layout/MainLayout';
-import useOwnersStore from '@/store/ownersStore';
+import useOwnersStore, { OwnerWithPassword } from '@/store/ownersStore';
 import { toast } from 'sonner';
 
 const formSchema = z.object({
@@ -50,12 +49,10 @@ const CreateOwner = () => {
     try {
       // We need to separate password from the rest of the owner data
       // since password isn't part of the Owner type
-      const { password, confirmPassword, ...ownerData } = values;
+      const { confirmPassword, ...ownerData } = values;
       
-      await createOwner({
-        ...ownerData,
-        password, // Pass password separately
-      });
+      // Now ownerData is of type OwnerWithPassword which can include password
+      await createOwner(ownerData);
       
       toast.success('Owner created successfully!');
       navigate('/admin/owners');

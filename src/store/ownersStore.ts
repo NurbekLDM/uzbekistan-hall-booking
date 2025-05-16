@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import api from '@/lib/api';
 
@@ -10,6 +9,11 @@ export interface Owner {
   halls?: string[]; // Array of hall IDs
 }
 
+// Define an extended interface that includes password for creating owners
+export interface OwnerWithPassword extends Partial<Owner> {
+  password?: string;
+}
+
 interface OwnersState {
   owners: Owner[];
   currentOwner: Owner | null;
@@ -19,7 +23,7 @@ interface OwnersState {
   // Actions
   fetchOwners: () => Promise<void>;
   fetchOwnerById: (id: string) => Promise<void>;
-  createOwner: (ownerData: Partial<Owner>) => Promise<void>;
+  createOwner: (ownerData: OwnerWithPassword) => Promise<void>;
   deleteOwner: (id: string) => Promise<void>;
   assignHallToOwner: (ownerId: string, hallId: string) => Promise<void>;
 }
@@ -50,7 +54,7 @@ const useOwnersStore = create<OwnersState>((set, get) => ({
     }
   },
   
-  createOwner: async (ownerData: Partial<Owner>) => {
+  createOwner: async (ownerData: OwnerWithPassword) => {
     set({ isLoading: true, error: null });
     try {
       await api.post('/admin/createOwner', ownerData);

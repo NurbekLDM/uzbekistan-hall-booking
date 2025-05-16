@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { HallForm } from '@/components/halls/HallForm';
@@ -22,8 +21,7 @@ const EditHall = () => {
     if (!id) return;
     
     try {
-      // We need to properly handle FormData to make it compatible with updateHall
-      // updateHall expects FormData object
+      // Pass formData directly to updateHall which should be designed to accept FormData
       await updateHall(id, formData);
       toast.success('Hall updated successfully!');
       navigate('/owner/dashboard');

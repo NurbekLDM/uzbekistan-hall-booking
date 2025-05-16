@@ -1,7 +1,11 @@
 
 import { create } from 'zustand';
 import api from '@/lib/api';
-import { toast } from 'sonner';
+
+export const TASHKENT_DISTRICTS = [
+  'Bektemir', 'Chilanzar', 'Hamza', 'Mirobod', 'Mirzo-Ulugbek', 
+  'Sergeli', 'Shayhontohur', 'Olmazar', 'Uchtepa', 'Yakkasaray', 'Yunusabad'
+];
 
 export interface Hall {
   id: string;
@@ -12,19 +16,8 @@ export interface Hall {
   capacity: number;
   pricePerSeat: number;
   phone: string;
-  owner?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  };
-  approved: boolean;
-}
-
-interface HallFilter {
-  district?: string;
-  approved?: boolean;
-  searchText?: string;
-  sortBy?: 'price_asc' | 'price_desc' | 'capacity_asc' | 'capacity_desc';
+  ownerId?: string;
+  status: 'approved' | 'pending';
 }
 
 interface HallsState {
@@ -33,23 +26,16 @@ interface HallsState {
   currentHall: Hall | null;
   isLoading: boolean;
   error: string | null;
-  filters: HallFilter;
   
   // Actions
   fetchHalls: () => Promise<void>;
+  filterHalls: (filters: any) => void;
   fetchHallById: (id: string) => Promise<void>;
   createHall: (hallData: FormData) => Promise<void>;
-  updateHall: (id: string, hallData: Partial<Hall>) => Promise<void>;
+  updateHall: (id: string, hallData: FormData) => Promise<void>;
   deleteHall: (id: string) => Promise<void>;
   approveHall: (id: string) => Promise<void>;
-  setFilters: (filters: HallFilter) => void;
-  resetFilters: () => void;
 }
-
-const TASHKENT_DISTRICTS = [
-  'Bektemir', 'Chilanzar', 'Hamza', 'Mirobod', 'Mirzo Ulugbek', 
-  'Sergeli', 'Shaykhantaur', 'Olmazar', 'Uchtepa', 'Yakkasaray', 'Yunusabad'
-];
 
 const useHallsStore = create<HallsState>((set, get) => ({
   halls: [],
@@ -57,17 +43,36 @@ const useHallsStore = create<HallsState>((set, get) => ({
   currentHall: null,
   isLoading: false,
   error: null,
-  filters: {},
   
   fetchHalls: async () => {
     set({ isLoading: true, error: null });
     try {
+      // Fetch halls based on user role
       const { data } = await api.get('/admin/halls');
       set({ halls: data, filteredHalls: data, isLoading: false });
-      get().setFilters(get().filters); // Apply any existing filters
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
+  },
+  
+  filterHalls: (filters: any) => {
+    // Filter implementation would go here
+    // This is just a placeholder - the actual implementation would depend on your requirements
+    const { halls } = get();
+    let filtered = [...halls];
+    
+    // Example filtering logic
+    if (filters.district) {
+      filtered = filtered.filter(hall => hall.district === filters.district);
+    }
+    
+    if (filters.status) {
+      filtered = filtered.filter(hall => hall.status === filters.status);
+    }
+    
+    // More filtering options can be added here
+    
+    set({ filteredHalls: filtered });
   },
   
   fetchHallById: async (id: string) => {
@@ -83,24 +88,38 @@ const useHallsStore = create<HallsState>((set, get) => ({
   createHall: async (hallData: FormData) => {
     set({ isLoading: true, error: null });
     try {
-      await api.post('/owner/createHall', hallData, {
+      // Set correct content type for FormData (multipart/form-data)
+      const { data } = await api.post('/owner/createHall', hallData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+          'Content-Type': 'multipart/form-data'
+        }
       });
-      await get().fetchHalls();
-      toast.success('Hall created successfully!');
+      set(state => ({ 
+        halls: [...state.halls, data],
+        filteredHalls: [...state.filteredHalls, data],
+        isLoading: false 
+      }));
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
   },
   
-  updateHall: async (id: string, hallData: Partial<Hall>) => {
+  updateHall: async (id: string, hallData: FormData) => {
     set({ isLoading: true, error: null });
     try {
-      await api.put(`/admin/halls/${id}`, hallData);
-      await get().fetchHalls();
-      toast.success('Hall updated successfully!');
+      // Set correct content type for FormData (multipart/form-data)
+      const { data } = await api.put(`/owner/updateHall/${id}`, hallData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      set(state => ({
+        halls: state.halls.map(hall => hall.id === id ? data : hall),
+        filteredHalls: state.filteredHalls.map(hall => hall.id === id ? data : hall),
+        currentHall: data,
+        isLoading: false
+      }));
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
@@ -110,12 +129,11 @@ const useHallsStore = create<HallsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await api.delete(`/admin/halls/${id}`);
-      set(state => ({ 
+      set(state => ({
         halls: state.halls.filter(hall => hall.id !== id),
         filteredHalls: state.filteredHalls.filter(hall => hall.id !== id),
         isLoading: false
       }));
-      toast.success('Hall deleted successfully!');
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
@@ -124,64 +142,17 @@ const useHallsStore = create<HallsState>((set, get) => ({
   approveHall: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      await api.put(`/admin/halls/${id}`, { approved: true });
+      const { data } = await api.put(`/admin/halls/${id}`, { status: 'approved' });
+      
       set(state => ({
-        halls: state.halls.map(hall => 
-          hall.id === id ? { ...hall, approved: true } : hall
-        ),
-        filteredHalls: state.filteredHalls.map(hall => 
-          hall.id === id ? { ...hall, approved: true } : hall
-        ),
+        halls: state.halls.map(hall => hall.id === id ? { ...hall, status: 'approved' } : hall),
+        filteredHalls: state.filteredHalls.map(hall => hall.id === id ? { ...hall, status: 'approved' } : hall),
         isLoading: false
       }));
-      toast.success('Hall approved successfully!');
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
   },
-  
-  setFilters: (filters: HallFilter) => {
-    const newFilters = { ...get().filters, ...filters };
-    set({ filters: newFilters });
-    
-    // Apply filters
-    const { district, approved, searchText, sortBy } = newFilters;
-    let filtered = [...get().halls];
-    
-    if (district) {
-      filtered = filtered.filter(hall => hall.district === district);
-    }
-    
-    if (approved !== undefined) {
-      filtered = filtered.filter(hall => hall.approved === approved);
-    }
-    
-    if (searchText) {
-      const search = searchText.toLowerCase();
-      filtered = filtered.filter(hall => 
-        hall.name.toLowerCase().includes(search) || 
-        hall.address.toLowerCase().includes(search)
-      );
-    }
-    
-    // Apply sorting
-    if (sortBy) {
-      filtered = [...filtered].sort((a, b) => {
-        if (sortBy === 'price_asc') return a.pricePerSeat - b.pricePerSeat;
-        if (sortBy === 'price_desc') return b.pricePerSeat - a.pricePerSeat;
-        if (sortBy === 'capacity_asc') return a.capacity - b.capacity;
-        if (sortBy === 'capacity_desc') return b.capacity - a.capacity;
-        return 0;
-      });
-    }
-    
-    set({ filteredHalls: filtered });
-  },
-  
-  resetFilters: () => {
-    set({ filters: {}, filteredHalls: get().halls });
-  }
 }));
 
 export default useHallsStore;
-export { TASHKENT_DISTRICTS };
