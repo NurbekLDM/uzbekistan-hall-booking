@@ -112,7 +112,7 @@ export function HallFilters({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Any District</SelectItem>
+                    <SelectItem value="any_district">Any District</SelectItem>
                     {TASHKENT_DISTRICTS.map((district) => (
                       <SelectItem key={district} value={district}>
                         {district}
@@ -142,7 +142,7 @@ export function HallFilters({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">Any Status</SelectItem>
+                      <SelectItem value="any_status">Any Status</SelectItem>
                       <SelectItem value="approved">Approved</SelectItem>
                       <SelectItem value="not_approved">Not Approved</SelectItem>
                     </SelectContent>

@@ -17,6 +17,7 @@ export interface Hall {
   pricePerSeat: number;
   phone: string;
   ownerId?: string;
+  owner?: string; // Add owner property for compatibility
   approved: boolean; // Changed from status to approved boolean
 }
 
@@ -73,7 +74,7 @@ const useHallsStore = create<HallsState>((set, get) => ({
     let filtered = [...halls];
     
     // Example filtering logic
-    if (filters.district) {
+    if (filters.district && filters.district !== 'any_district') {
       filtered = filtered.filter(hall => hall.district === filters.district);
     }
     
@@ -81,7 +82,31 @@ const useHallsStore = create<HallsState>((set, get) => ({
       filtered = filtered.filter(hall => hall.approved === filters.approved);
     }
     
-    // More filtering options can be added here
+    if (filters.searchText) {
+      const searchLower = filters.searchText.toLowerCase();
+      filtered = filtered.filter(hall => 
+        hall.name.toLowerCase().includes(searchLower) || 
+        hall.address.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Sorting
+    if (filters.sortBy) {
+      switch (filters.sortBy) {
+        case 'price_asc':
+          filtered.sort((a, b) => a.pricePerSeat - b.pricePerSeat);
+          break;
+        case 'price_desc':
+          filtered.sort((a, b) => b.pricePerSeat - a.pricePerSeat);
+          break;
+        case 'capacity_asc':
+          filtered.sort((a, b) => a.capacity - b.capacity);
+          break;
+        case 'capacity_desc':
+          filtered.sort((a, b) => b.capacity - a.capacity);
+          break;
+      }
+    }
     
     set({ filteredHalls: filtered });
   },
