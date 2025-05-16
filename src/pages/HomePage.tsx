@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import useHallsStore from '@/store/hallsStore';
 
 const HomePage = () => {
-  const { halls, filteredHalls, isLoading, fetchHalls, setFilters, resetFilters } = useHallsStore();
+  const { halls, filteredHalls, isLoading, fetchHalls, filterHalls } = useHallsStore();
   const [featuredHalls, setFeaturedHalls] = useState([]);
 
   useEffect(() => {
@@ -17,8 +16,10 @@ const HomePage = () => {
 
   // Filter for only approved halls
   useEffect(() => {
-    setFilters({ approved: true });
-  }, [halls, setFilters]);
+    if (halls.length > 0) {
+      filterHalls({ approved: true });
+    }
+  }, [halls, filterHalls]);
 
   return (
     <MainLayout>

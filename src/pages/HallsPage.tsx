@@ -6,7 +6,7 @@ import MainLayout from '@/components/layout/MainLayout';
 import useHallsStore from '@/store/hallsStore';
 
 const HallsPage = () => {
-  const { halls, filteredHalls, isLoading, fetchHalls, setFilters, resetFilters } = useHallsStore();
+  const { halls, filteredHalls, isLoading, fetchHalls, filterHalls, resetFilters } = useHallsStore();
 
   useEffect(() => {
     fetchHalls();
@@ -14,12 +14,14 @@ const HallsPage = () => {
 
   // Filter for only approved halls for regular users
   useEffect(() => {
-    setFilters({ approved: true });
-  }, [halls, setFilters]);
+    if (halls.length > 0) {
+      filterHalls({ approved: true });
+    }
+  }, [halls, filterHalls]);
 
   const handleFilter = (filters: any) => {
     // Always filter for approved halls for public view
-    setFilters({ ...filters, approved: true });
+    filterHalls({ ...filters, approved: true });
   };
 
   return (
@@ -34,7 +36,7 @@ const HallsPage = () => {
             onFilter={handleFilter} 
             onReset={() => {
               resetFilters();
-              setFilters({ approved: true });
+              filterHalls({ approved: true });
             }} 
             showApprovalFilter={false}
           />

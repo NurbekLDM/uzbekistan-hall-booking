@@ -17,7 +17,7 @@ export interface Hall {
   pricePerSeat: number;
   phone: string;
   ownerId?: string;
-  status: 'approved' | 'pending';
+  approved: boolean; // Changed from status to approved boolean
 }
 
 interface HallsState {
@@ -35,6 +35,10 @@ interface HallsState {
   updateHall: (id: string, hallData: FormData) => Promise<void>;
   deleteHall: (id: string) => Promise<void>;
   approveHall: (id: string) => Promise<void>;
+  
+  // Add the missing functions
+  setFilters: (filters: any) => void;
+  resetFilters: () => void;
 }
 
 const useHallsStore = create<HallsState>((set, get) => ({
@@ -49,7 +53,14 @@ const useHallsStore = create<HallsState>((set, get) => ({
     try {
       // Fetch halls based on user role
       const { data } = await api.get('/admin/halls');
-      set({ halls: data, filteredHalls: data, isLoading: false });
+      
+      // Convert status to approved for consistency
+      const formattedData = data.map((hall: any) => ({
+        ...hall,
+        approved: hall.status === 'approved'
+      }));
+      
+      set({ halls: formattedData, filteredHalls: formattedData, isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
@@ -66,8 +77,8 @@ const useHallsStore = create<HallsState>((set, get) => ({
       filtered = filtered.filter(hall => hall.district === filters.district);
     }
     
-    if (filters.status) {
-      filtered = filtered.filter(hall => hall.status === filters.status);
+    if (filters.approved !== undefined) {
+      filtered = filtered.filter(hall => hall.approved === filters.approved);
     }
     
     // More filtering options can be added here
@@ -75,11 +86,25 @@ const useHallsStore = create<HallsState>((set, get) => ({
     set({ filteredHalls: filtered });
   },
   
+  // Add the missing functions that are used in components
+  setFilters: (filters: any) => {
+    get().filterHalls(filters);
+  },
+  
+  resetFilters: () => {
+    set(state => ({ filteredHalls: state.halls }));
+  },
+  
   fetchHallById: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.get(`/admin/halls/${id}`);
-      set({ currentHall: data, isLoading: false });
+      // Convert status to approved
+      const formattedData = {
+        ...data,
+        approved: data.status === 'approved'
+      };
+      set({ currentHall: formattedData, isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
@@ -94,9 +119,16 @@ const useHallsStore = create<HallsState>((set, get) => ({
           'Content-Type': 'multipart/form-data'
         }
       });
+      
+      // Convert status to approved for consistency
+      const formattedData = {
+        ...data,
+        approved: data.status === 'approved'
+      };
+      
       set(state => ({ 
-        halls: [...state.halls, data],
-        filteredHalls: [...state.filteredHalls, data],
+        halls: [...state.halls, formattedData],
+        filteredHalls: [...state.filteredHalls, formattedData],
         isLoading: false 
       }));
     } catch (error: any) {
@@ -114,10 +146,16 @@ const useHallsStore = create<HallsState>((set, get) => ({
         }
       });
       
+      // Convert status to approved for consistency
+      const formattedData = {
+        ...data,
+        approved: data.status === 'approved'
+      };
+      
       set(state => ({
-        halls: state.halls.map(hall => hall.id === id ? data : hall),
-        filteredHalls: state.filteredHalls.map(hall => hall.id === id ? data : hall),
-        currentHall: data,
+        halls: state.halls.map(hall => hall.id === id ? formattedData : hall),
+        filteredHalls: state.filteredHalls.map(hall => hall.id === id ? formattedData : hall),
+        currentHall: formattedData,
         isLoading: false
       }));
     } catch (error: any) {
@@ -145,8 +183,8 @@ const useHallsStore = create<HallsState>((set, get) => ({
       const { data } = await api.put(`/admin/halls/${id}`, { status: 'approved' });
       
       set(state => ({
-        halls: state.halls.map(hall => hall.id === id ? { ...hall, status: 'approved' } : hall),
-        filteredHalls: state.filteredHalls.map(hall => hall.id === id ? { ...hall, status: 'approved' } : hall),
+        halls: state.halls.map(hall => hall.id === id ? { ...hall, approved: true } : hall),
+        filteredHalls: state.filteredHalls.map(hall => hall.id === id ? { ...hall, approved: true } : hall),
         isLoading: false
       }));
     } catch (error: any) {

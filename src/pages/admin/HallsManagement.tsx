@@ -13,7 +13,7 @@ const HallsManagement = () => {
     filteredHalls, 
     isLoading, 
     fetchHalls, 
-    setFilters, 
+    filterHalls,
     resetFilters,
     approveHall,
     deleteHall
@@ -63,7 +63,7 @@ const HallsManagement = () => {
 
         <div className="mb-8">
           <HallFilters 
-            onFilter={setFilters} 
+            onFilter={filterHalls} 
             onReset={resetFilters} 
             showApprovalFilter={true}
           />
@@ -127,8 +127,8 @@ const HallsManagement = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {hall.owner ? (
-                          `${hall.owner.firstName} ${hall.owner.lastName}`
+                        {hall.ownerId ? (
+                          `Owner ID: ${hall.ownerId}`
                         ) : (
                           <span className="text-gray-500">Not assigned</span>
                         )}
