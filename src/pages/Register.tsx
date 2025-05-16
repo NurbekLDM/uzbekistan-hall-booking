@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,16 +15,9 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 
-import useAuthStore, { UserRole } from '@/store/authStore';
+import useAuthStore from '@/store/authStore';
 import MainLayout from '@/components/layout/MainLayout';
 
 const formSchema = z.object({
@@ -42,20 +34,21 @@ const formSchema = z.object({
     message: 'Password must be at least 6 characters.',
   }),
   confirmPassword: z.string(),
-  role: z.enum(['user'], {  // Only users can self-register
-    required_error: 'Please select a role.',
-  }),
+  // Only users can self-register
+  role: z.literal('user'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function Register() {
   const { register, isLoading } = useAuthStore();
   const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
   
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: '',
@@ -63,11 +56,11 @@ export default function Register() {
       username: '',
       password: '',
       confirmPassword: '',
-      role: 'user' as UserRole,
+      role: 'user',
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: FormValues) {
     setServerError(null);
     
     try {

@@ -29,11 +29,13 @@ const formSchema = z.object({
   path: ['confirmPassword'],
 });
 
+type OwnerFormValues = z.infer<typeof formSchema>;
+
 const CreateOwner = () => {
   const { createOwner, isLoading } = useOwnersStore();
   const navigate = useNavigate();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<OwnerFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: '',
@@ -44,13 +46,15 @@ const CreateOwner = () => {
     },
   });
 
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (values: OwnerFormValues) => {
     try {
+      // We need to separate password from the rest of the owner data
+      // since password isn't part of the Owner type
+      const { password, confirmPassword, ...ownerData } = values;
+      
       await createOwner({
-        firstName: values.firstName,
-        lastName: values.lastName,
-        username: values.username,
-        password: values.password,
+        ...ownerData,
+        password, // Pass password separately
       });
       
       toast.success('Owner created successfully!');

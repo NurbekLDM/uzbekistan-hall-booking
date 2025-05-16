@@ -22,6 +22,8 @@ const EditHall = () => {
     if (!id) return;
     
     try {
+      // We need to properly handle FormData to make it compatible with updateHall
+      // updateHall expects FormData object
       await updateHall(id, formData);
       toast.success('Hall updated successfully!');
       navigate('/owner/dashboard');
