@@ -1,0 +1,307 @@
+
+import { useState } from 'react';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { X } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Hall, TASHKENT_DISTRICTS } from '@/store/hallsStore';
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'Hall name is required' }),
+  district: z.string().min(2, { message: 'District is required' }),
+  address: z.string().min(5, { message: 'Address is required' }),
+  capacity: z.coerce.number().min(1, { message: 'Capacity must be at least 1' }),
+  pricePerSeat: z.coerce.number().min(0, { message: 'Price can\'t be negative' }),
+  phone: z.string().min(5, { message: 'Phone number is required' }),
+});
+
+interface HallFormProps {
+  initialData?: Partial<Hall>;
+  onSubmit: (data: FormData) => void;
+  isLoading: boolean;
+}
+
+export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [previewImages, setPreviewImages] = useState<string[]>(
+    initialData?.images || []
+  );
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: initialData?.name || '',
+      district: initialData?.district || '',
+      address: initialData?.address || '',
+      capacity: initialData?.capacity || 0,
+      pricePerSeat: initialData?.pricePerSeat || 0,
+      phone: initialData?.phone || '',
+    },
+  });
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      setSelectedImages((prev) => [...prev, ...filesArray]);
+      
+      // Create previews
+      const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+      setPreviewImages((prev) => [...prev, ...newPreviews]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+    
+    // Remove preview and revoke object URL to avoid memory leaks
+    const urlToRemove = previewImages[index];
+    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+    
+    if (urlToRemove && !initialData?.images?.includes(urlToRemove)) {
+      URL.revokeObjectURL(urlToRemove);
+    }
+  };
+
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    const formData = new FormData();
+    
+    // Add form values
+    Object.entries(values).forEach(([key, value]) => {
+      formData.append(key, value.toString());
+    });
+    
+    // Add images
+    selectedImages.forEach(file => {
+      formData.append('images', file);
+    });
+    
+    // If there are existing images, add their URLs
+    if (initialData?.images) {
+      initialData.images.forEach((url, index) => {
+        // Only add URLs that are still in previewImages
+        if (previewImages.includes(url)) {
+          formData.append('existingImages', url);
+        }
+      });
+    }
+    
+    onSubmit(formData);
+  };
+
+  return (
+    <Form {...form}>
+      <form 
+        onSubmit={form.handleSubmit(handleSubmit)} 
+        className="space-y-6"
+      >
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Hall Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter hall name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="district"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>District</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a district" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {TASHKENT_DISTRICTS.map((district) => (
+                    <SelectItem key={district} value={district}>
+                      {district}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Address</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Enter full address" 
+                  {...field} 
+                  rows={3}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="capacity"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Capacity (seats)</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    placeholder="Enter capacity" 
+                    min={1} 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="pricePerSeat"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Price Per Seat ($)</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    placeholder="Enter price per seat" 
+                    min={0} 
+                    step="0.01"
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone Number</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="Enter phone number" 
+                  {...field} 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div>
+          <FormLabel>Images</FormLabel>
+          <div className="mt-2 border-2 border-dashed border-gray-300 rounded-md p-6">
+            <Input
+              type="file"
+              id="images"
+              onChange={handleImageChange}
+              accept="image/*"
+              multiple
+              className="hidden"
+            />
+            <label htmlFor="images" className="cursor-pointer">
+              <div className="space-y-2 text-center">
+                <div className="mx-auto h-12 w-12 text-gray-400">
+                  {/* Icon for upload */}
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
+                  </svg>
+                </div>
+                <div className="flex text-sm text-gray-600">
+                  <span className="relative rounded-md font-medium text-gold hover:text-gold-dark focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-gold">
+                    Upload images
+                  </span>
+                  <p className="pl-1">or drag and drop</p>
+                </div>
+                <p className="text-xs text-gray-500">
+                  PNG, JPG, GIF up to 10MB each
+                </p>
+              </div>
+            </label>
+          </div>
+
+          {/* Preview images */}
+          {previewImages.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              {previewImages.map((url, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={url}
+                    alt={`Preview ${index}`}
+                    className="h-24 w-full rounded-md object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-0 right-0 p-1 bg-white rounded-full shadow-md text-red-500"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Saving...' : 'Save Hall'}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
