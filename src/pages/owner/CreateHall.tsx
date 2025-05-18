@@ -1,6 +1,6 @@
 
 import { useNavigate } from 'react-router-dom';
-import { HallForm } from '@/components/halls/HallForm';
+import  HallForm  from '@/components/halls/HallForm'
 import { Button } from '@/components/ui/button';
 import MainLayout from '@/components/layout/MainLayout';
 import useHallsStore from '@/store/hallsStore';

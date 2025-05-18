@@ -1,22 +1,22 @@
-
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { HallFilters } from '@/components/halls/HallFilters';
-import MainLayout from '@/components/layout/MainLayout';
-import useHallsStore from '@/store/hallsStore';
-import { toast } from 'sonner';
+import { useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { HallFilters } from "@/components/halls/HallFilters";
+import MainLayout from "@/components/layout/MainLayout";
+import useHallsStore from "@/store/hallsStore";
+import { toast } from "sonner";
 
 const HallsManagement = () => {
-  const { 
-    halls, 
-    filteredHalls, 
-    isLoading, 
-    fetchHalls, 
+  const {
+    halls,
+    filteredHalls,
+    isLoading,
+    fetchHalls,
     filterHalls,
     resetFilters,
     approveHall,
-    deleteHall
+    deleteHall,
+    rejectHall,
   } = useHallsStore();
 
   useEffect(() => {
@@ -26,31 +26,48 @@ const HallsManagement = () => {
   const handleApprove = async (id: string) => {
     try {
       await approveHall(id);
-      toast.success('Hall approved successfully!');
+      toast.success("Hall approved successfully!");
     } catch (error) {
-      toast.error('Failed to approve hall');
+      toast.error("Failed to approve hall");
     }
   };
+  console.log("filteredHalls", filteredHalls);
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this hall? This action cannot be undone.')) {
+  const handleRejectHall = async (id: string) => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this hall? This action cannot be undone."
+      )
+    ) {
       try {
-        await deleteHall(id);
-        toast.success('Hall deleted successfully!');
+        await rejectHall(id);
+        toast.success("Hall reject successfully!");
       } catch (error) {
-        toast.error('Failed to delete hall');
+        toast.error("Failed to delete hall");
       }
     }
   };
-
+ 
+  const handleDeleteHall = async (id: string) => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this hall? This action cannot be undone."
+      )
+    ) {
+      try {
+        await deleteHall(id);
+        toast.success("Hall deleted successfully!");
+      } catch (error) {
+        toast.error("Failed to delete hall");
+      }
+    }
+  };
   return (
-    <MainLayout requireAuth={true} allowedRoles={['admin']}>
+    <MainLayout requireAuth={true} allowedRoles={["admin"]}>
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-serif font-bold">
-              Halls Management
-            </h1>
+            <h1 className="text-3xl font-serif font-bold">Halls Management</h1>
             <p className="text-gray-600">
               View, approve, edit or remove wedding halls
             </p>
@@ -62,13 +79,13 @@ const HallsManagement = () => {
         </div>
 
         <div className="mb-8">
-          <HallFilters 
-            onFilter={filterHalls} 
-            onReset={resetFilters} 
+          <HallFilters
+            onFilter={filterHalls}
+            onReset={resetFilters}
             showApprovalFilter={true}
           />
         </div>
-        
+
         <div className="bg-white rounded-lg overflow-hidden shadow">
           <div className="p-4">
             {isLoading ? (
@@ -106,7 +123,10 @@ const HallsManagement = () => {
                   {filteredHalls.map((hall) => (
                     <tr key={hall.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Link to={`/admin/halls/${hall.id}`} className="text-blue-600 hover:text-blue-900">
+                        <Link
+                          to={`/admin/halls/${hall.id}`}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
                           {hall.name}
                         </Link>
                       </td>
@@ -117,18 +137,22 @@ const HallsManagement = () => {
                         {hall.capacity}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        ${hall.pricePerSeat}
+                        ${hall.price}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          hall.approved ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-                        }`}>
-                          {hall.approved ? 'Approved' : 'Pending'}
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            hall.approved
+                              ? "bg-green-100 text-green-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {hall.approved ? "Approved" : "Pending"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {hall.ownerId ? (
-                          `Owner ID: ${hall.ownerId}`
+                        {hall.owner_id ? (
+                          `${hall.owner?.first_name} ${hall.owner?.last_name}`
                         ) : (
                           <span className="text-gray-500">Not assigned</span>
                         )}
@@ -136,30 +160,37 @@ const HallsManagement = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end gap-2">
                           {!hall.approved && (
-                            <Button 
-                              variant="default" 
+                            <Button
+                              variant="default"
                               size="sm"
                               onClick={() => handleApprove(hall.id)}
                             >
                               Approve
                             </Button>
                           )}
-                          <Button 
-                            asChild
-                            variant="outline" 
-                            size="sm"
-                          >
+                          <Button asChild variant="outline" size="sm">
                             <Link to={`/admin/halls/${hall.id}/edit`}>
                               Edit
                             </Link>
                           </Button>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => handleDelete(hall.id)}
-                          >
-                            Delete
-                          </Button>
+
+                          {hall.approved ? (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteHall(hall.id)}
+                            >
+                              Delete
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleRejectHall(hall.id)}
+                            >
+                              Reject
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>

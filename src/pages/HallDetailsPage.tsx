@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { format } from 'date-fns';
 import { Calendar, Check, MapPin, Phone, Users } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -24,21 +23,22 @@ import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
 
 const HallDetailsPage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: number }>();
   const { currentHall, isLoading: hallLoading, fetchHallById } = useHallsStore();
-  const { bookings, isLoading: bookingsLoading, fetchAllBookings, createBooking } = useBookingsStore();
+  const { bookings, isLoading: bookingsLoading, fetchHallBookings, createBooking } = useBookingsStore();
   const { user, isAuthenticated } = useAuthStore();
   const [activeTab, setActiveTab] = useState('details');
   const [showBookingForm, setShowBookingForm] = useState(false);
 
+
   useEffect(() => {
     if (id) {
       fetchHallById(id);
-      fetchAllBookings();
+      fetchHallBookings(id);
     }
-  }, [id, fetchHallById, fetchAllBookings]);
+  }, []);
 
-  // Filter bookings for this hall only
+
   const hallBookings = bookings.filter(booking => booking.hallId === id);
 
   const handleBookingSubmit = async (data: any) => {
@@ -56,7 +56,7 @@ const HallDetailsPage = () => {
       
       toast.success('Booking created successfully!');
       setShowBookingForm(false);
-      fetchAllBookings();
+      fetchHallBookings(id);
     } catch (error) {
       toast.error('Failed to create booking');
       console.error(error);
@@ -94,7 +94,7 @@ const HallDetailsPage = () => {
               <span>{currentHall.phone}</span>
             </div>
             <Badge variant="outline" className="ml-auto">
-              ${currentHall.pricePerSeat} per guest
+              ${currentHall.price} per guest
             </Badge>
           </div>
         </div>
@@ -108,7 +108,7 @@ const HallDetailsPage = () => {
                   <CarouselItem key={index} className="basis-full">
                     <div className="h-[400px] rounded-lg overflow-hidden">
                       <img 
-                        src={image} 
+                        src={`http://localhost:5000/${image}`} 
                         alt={`${currentHall.name} - Photo ${index + 1}`} 
                         className="w-full h-full object-cover"
                       />
@@ -160,7 +160,7 @@ const HallDetailsPage = () => {
                       </li>
                       <li className="flex items-start">
                         <Check size={18} className="mr-2 text-green-500 mt-0.5" />
-                        <span>Affordable pricing at ${currentHall.pricePerSeat} per guest</span>
+                        <span>Affordable pricing at ${currentHall.price} per guest</span>
                       </li>
                     </ul>
                   </div>
@@ -183,7 +183,7 @@ const HallDetailsPage = () => {
                   <div className="space-y-4">
                     <div className="flex justify-between">
                       <span className="font-medium">Price per guest</span>
-                      <span className="font-bold text-gold">${currentHall.pricePerSeat}</span>
+                      <span className="font-bold text-gold">${currentHall.price}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="font-medium">Maximum capacity</span>
@@ -191,7 +191,7 @@ const HallDetailsPage = () => {
                     </div>
                     <div className="pt-4 border-t">
                       <p className="text-sm text-gray-600 mb-4">
-                        Example: For a wedding with 100 guests, the total would be ${currentHall.pricePerSeat * 100}.
+                        Example: For a wedding with 100 guests, the total would be ${currentHall.price * 100}.
                       </p>
                       <Button 
                         className="w-full"

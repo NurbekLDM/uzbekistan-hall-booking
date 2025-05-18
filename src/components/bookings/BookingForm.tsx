@@ -163,10 +163,10 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
                 <h3 className="text-lg font-medium">Total Cost</h3>
                 <div className="flex justify-between p-3 bg-gray-50 rounded-md">
                   <span>
-                    {form.watch('guestCount') || 0} guests × ${hall.pricePerSeat}/guest
+                    {form.watch('guestCount') || 0} guests × ${hall.price}/guest
                   </span>
                   <span className="font-semibold">
-                    ${(form.watch('guestCount') || 0) * hall.pricePerSeat}
+                    ${(form.watch('guestCount') || 0) * hall.price}
                   </span>
                 </div>
               </div>

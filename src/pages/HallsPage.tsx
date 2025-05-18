@@ -12,15 +12,15 @@ const HallsPage = () => {
     fetchHalls();
   }, [fetchHalls]);
 
-  // Filter for only approved halls for regular users
+
   useEffect(() => {
     if (halls.length > 0) {
-      filterHalls({ approved: true });
+      filterHalls({});
     }
   }, [halls, filterHalls]);
 
   const handleFilter = (filters: any) => {
-    // Always filter for approved halls for public view
+
     filterHalls({ ...filters, approved: true });
   };
 

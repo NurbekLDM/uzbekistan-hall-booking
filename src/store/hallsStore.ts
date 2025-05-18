@@ -1,10 +1,9 @@
-
 import { create } from 'zustand';
 import api from '@/lib/api';
 
 export const TASHKENT_DISTRICTS = [
   'Bektemir', 'Chilanzar', 'Hamza', 'Mirobod', 'Mirzo-Ulugbek', 
-  'Sergeli', 'Shayhontohur', 'Olmazar', 'Uchtepa', 'Yakkasaray', 'Yunusabad'
+  'Sergeli', 'Shayhontohur', 'Olmazar', 'Uchtepa', 'Yakkasaray', 'Yunusobod'
 ];
 
 export interface Hall {
@@ -14,11 +13,11 @@ export interface Hall {
   district: string;
   address: string;
   capacity: number;
-  pricePerSeat: number;
+  price: number;
   phone: string;
-  ownerId?: string;
-  owner?: string; // Add owner property for compatibility
-  approved: boolean; // Changed from status to approved boolean
+  owner_id?: string;
+  owner?: string; 
+  approved: boolean; 
 }
 
 interface HallsState {
@@ -31,11 +30,13 @@ interface HallsState {
   // Actions
   fetchHalls: () => Promise<void>;
   filterHalls: (filters: any) => void;
-  fetchHallById: (id: string) => Promise<void>;
+  fetchHallById: (id: number) => Promise<void>;
   createHall: (hallData: FormData) => Promise<void>;
   updateHall: (id: string, hallData: FormData) => Promise<void>;
   deleteHall: (id: string) => Promise<void>;
   approveHall: (id: string) => Promise<void>;
+  rejectHall: (id: string) => Promise<void>;
+  assignHall: (hallId: string, ownerId: string) => Promise<void>;
   
   // Add the missing functions
   setFilters: (filters: any) => void;
@@ -52,10 +53,10 @@ const useHallsStore = create<HallsState>((set, get) => ({
   fetchHalls: async () => {
     set({ isLoading: true, error: null });
     try {
-      // Fetch halls based on user role
-      const { data } = await api.get('/admin/halls');
+     
+      const { data } = await api.get('/user/halls');
       
-      // Convert status to approved for consistency
+     
       const formattedData = data.map((hall: any) => ({
         ...hall,
         approved: hall.status === 'approved'
@@ -68,12 +69,11 @@ const useHallsStore = create<HallsState>((set, get) => ({
   },
   
   filterHalls: (filters: any) => {
-    // Filter implementation would go here
-    // This is just a placeholder - the actual implementation would depend on your requirements
+  
     const { halls } = get();
     let filtered = [...halls];
     
-    // Example filtering logic
+  
     if (filters.district && filters.district !== 'any_district') {
       filtered = filtered.filter(hall => hall.district === filters.district);
     }
@@ -90,7 +90,7 @@ const useHallsStore = create<HallsState>((set, get) => ({
       );
     }
     
-    // Sorting
+
     if (filters.sortBy) {
       switch (filters.sortBy) {
         case 'price_asc':
@@ -111,7 +111,7 @@ const useHallsStore = create<HallsState>((set, get) => ({
     set({ filteredHalls: filtered });
   },
   
-  // Add the missing functions that are used in components
+
   setFilters: (filters: any) => {
     get().filterHalls(filters);
   },
@@ -120,32 +120,37 @@ const useHallsStore = create<HallsState>((set, get) => ({
     set(state => ({ filteredHalls: state.halls }));
   },
   
-  fetchHallById: async (id: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data } = await api.get(`/admin/halls/${id}`);
-      // Convert status to approved
-      const formattedData = {
-        ...data,
-        approved: data.status === 'approved'
-      };
-      set({ currentHall: formattedData, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-    }
-  },
+  fetchHallById: async (id: number) => {
+  set({ isLoading: true, error: null });
+  try {
+    // Use axios directly without authentication headers for this specific endpoint
+    const { data } = await api.get(`/user/halls/${id}`, {
+      headers: {
+        // Skip authentication for this request
+        skipAuth: true
+      }
+    });
+    
+    const formattedData = {
+      ...data,
+      approved: data.status === 'approved'
+    };
+    set({ currentHall: formattedData, isLoading: false });
+  } catch (error: any) {
+    set({ error: error.message, isLoading: false });
+  }
+},
   
   createHall: async (hallData: FormData) => {
     set({ isLoading: true, error: null });
     try {
-      // Set correct content type for FormData (multipart/form-data)
       const { data } = await api.post('/owner/createHall', hallData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
       
-      // Convert status to approved for consistency
+
       const formattedData = {
         ...data,
         approved: data.status === 'approved'
@@ -164,7 +169,7 @@ const useHallsStore = create<HallsState>((set, get) => ({
   updateHall: async (id: string, hallData: FormData) => {
     set({ isLoading: true, error: null });
     try {
-      // Set correct content type for FormData (multipart/form-data)
+
       const { data } = await api.put(`/owner/updateHall/${id}`, hallData, {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -205,8 +210,8 @@ const useHallsStore = create<HallsState>((set, get) => ({
   approveHall: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await api.put(`/admin/halls/${id}`, { status: 'approved' });
-      
+      const { data } = await api.post(`/admin/approveHall/${id}`);
+      console.log('Approve hall response:', data);
       set(state => ({
         halls: state.halls.map(hall => hall.id === id ? { ...hall, approved: true } : hall),
         filteredHalls: state.filteredHalls.map(hall => hall.id === id ? { ...hall, approved: true } : hall),
@@ -216,6 +221,58 @@ const useHallsStore = create<HallsState>((set, get) => ({
       set({ error: error.message, isLoading: false });
     }
   },
+
+  rejectHall: async (id: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.post(`/admin/rejectHall/${id}`);
+      console.log('Reject hall response:', data);
+      set(state => ({
+        halls: state.halls.map(hall => hall.id === id ? { ...hall, approved: false } : hall),
+        filteredHalls: state.filteredHalls.map(hall => hall.id === id ? { ...hall, approved: false } : hall),
+        isLoading: false
+      }));
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+  getHallsByOwnerId: async (ownerId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.get(`/owner/getHalls/${ownerId}`);
+      set({ halls: data, filteredHalls: data, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+  
+  assignHall: async (hallId: string, ownerId: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const { data } = await api.post('/admin/assignHall', { hallId, ownerId });
+      
+
+      set(state => ({
+        halls: state.halls.map(hall => 
+          hall.id === hallId ? { ...hall, ownerId: ownerId } : hall
+        ),
+        filteredHalls: state.filteredHalls.map(hall => 
+          hall.id === hallId ? { ...hall, ownerId: ownerId } : hall
+        ),
+        // If current hall is the one being updated, update it as well
+        currentHall: state.currentHall?.id === hallId ? 
+          { ...state.currentHall, ownerId: ownerId } : state.currentHall,
+        isLoading: false
+      }));
+      
+      return data;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Assigning hall failed';
+      set({ error: errorMessage, isLoading: false });
+      throw new Error(errorMessage);
+    }
+  }
 }));
 
 export default useHallsStore;

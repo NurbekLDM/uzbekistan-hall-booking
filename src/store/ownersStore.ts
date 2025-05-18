@@ -3,13 +3,13 @@ import api from '@/lib/api';
 
 export interface Owner {
   id: string;
-  firstName: string;
-  lastName: string;
+  first_name: string;
+  last_name: string;
   username: string;
-  halls?: string[]; // Array of hall IDs
+  halls?: string[]; 
 }
 
-// Define an extended interface that includes password for creating owners
+
 export interface OwnerWithPassword extends Partial<Owner> {
   password?: string;
 }
@@ -20,7 +20,7 @@ interface OwnersState {
   isLoading: boolean;
   error: string | null;
   
-  // Actions
+
   fetchOwners: () => Promise<void>;
   fetchOwnerById: (id: string) => Promise<void>;
   createOwner: (ownerData: OwnerWithPassword) => Promise<void>;

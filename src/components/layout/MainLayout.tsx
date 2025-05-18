@@ -1,5 +1,4 @@
-
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Navbar from './Navbar';
@@ -12,23 +11,36 @@ interface MainLayoutProps {
 }
 
 const MainLayout = ({ children, requireAuth = false, allowedRoles = [] }: MainLayoutProps) => {
-  const { isAuthenticated, user, checkAuth } = useAuthStore();
+  const { isAuthenticated, user, checkAuth, checkingAuth, isLoading } = useAuthStore();
   const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const init = async () => {
+    // Check authentication on component mount
+    const verifyAuth = async () => {
       await checkAuth();
-      
-      if (requireAuth && !isAuthenticated) {
+      setAuthChecked(true);
+    };
+
+    verifyAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!authChecked) return; 
+
+    if (requireAuth) {
+      if (!isAuthenticated && !checkingAuth && !isLoading) {
         navigate('/login');
-      } else if (
-        requireAuth &&
+        return;
+      }
+
+      if (
         isAuthenticated &&
         allowedRoles.length > 0 &&
-        user && 
+        user &&
         !allowedRoles.includes(user.role)
       ) {
-        // Redirect based on role if not allowed
+        // Redirect based on role
         if (user.role === 'admin') {
           navigate('/admin/dashboard');
         } else if (user.role === 'owner') {
@@ -37,10 +49,17 @@ const MainLayout = ({ children, requireAuth = false, allowedRoles = [] }: MainLa
           navigate('/');
         }
       }
-    };
+    }
+  }, [authChecked, requireAuth, isAuthenticated, allowedRoles, user, checkingAuth, isLoading, navigate]);
 
-    init();
-  }, [requireAuth, isAuthenticated, allowedRoles, user, navigate, checkAuth]);
+  // Show loading indicator while checking auth
+  if ((requireAuth && !authChecked) || isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background/50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -59,3 +78,4 @@ const MainLayout = ({ children, requireAuth = false, allowedRoles = [] }: MainLa
 };
 
 export default MainLayout;
+

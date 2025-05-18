@@ -21,17 +21,18 @@ import useAuthStore from '@/store/authStore';
 import MainLayout from '@/components/layout/MainLayout';
 
 const formSchema = z.object({
-  firstName: z.string().min(2, {
+  first_name: z.string().min(2, {
     message: 'First name must be at least 2 characters.',
   }),
-  lastName: z.string().min(2, {
+  last_name: z.string().min(2, {
     message: 'Last name must be at least 2 characters.',
   }),
   username: z.string().min(2, {
     message: 'Username must be at least 2 characters.',
   }),
-  password: z.string().min(6, {
-    message: 'Password must be at least 6 characters.',
+  phone: z.string(),
+  password: z.string().min(4, {
+    message: 'Password must be at least 4 characters.',
   }),
   confirmPassword: z.string(),
   // Only users can self-register
@@ -51,9 +52,10 @@ export default function Register() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
+      first_name: '',
+      last_name: '',
       username: '',
+      phone: '',
       password: '',
       confirmPassword: '',
       role: 'user',
@@ -64,12 +66,13 @@ export default function Register() {
     setServerError(null);
     
     try {
-      const { firstName, lastName, username, password, role } = values;
+      const { first_name, last_name, username, phone, password, role } = values;
       
       await register(role, {
-        firstName,
-        lastName,
+        first_name,
+        last_name,
         username,
+        phone,
         password
       });
       
@@ -104,7 +107,7 @@ export default function Register() {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="first_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>First Name</FormLabel>
@@ -118,7 +121,7 @@ export default function Register() {
 
                   <FormField
                     control={form.control}
-                    name="lastName"
+                    name="last_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Last Name</FormLabel>
@@ -144,6 +147,21 @@ export default function Register() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter your phone number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
 
                 <FormField
                   control={form.control}

@@ -19,13 +19,10 @@ const OwnerDashboard = () => {
 
   useEffect(() => {
     fetchHalls();
-    // For simplicity, we're fetching bookings across all halls this owner has
-    // In a real implementation, we would filter by owner's halls
-    fetchHallBookings('all');
+    fetchHallBookings();
   }, [fetchHalls, fetchHallBookings]);
 
-  // Mocked owner's halls (would normally be filtered from API)
-  // Fix: Check if ownerId exists and is a string before comparing
+
   const ownerHalls = filteredHalls.filter(hall => {
     if (!user) return false;
     return hall.ownerId === user.id;
@@ -40,7 +37,7 @@ const OwnerDashboard = () => {
     }
   };
 
-  // Filter upcoming bookings
+
   const upcomingBookings = bookings.filter(
     (booking) => booking.status === 'upcoming'
   );

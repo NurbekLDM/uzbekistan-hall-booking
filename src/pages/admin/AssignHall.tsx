@@ -44,7 +44,7 @@ const AssignHall = () => {
     }
   }, [id, fetchOwnerById, fetchHalls]);
 
-  // Filter halls that don't have an owner yet
+
   const availableHalls = halls.filter(hall => !hall.owner);
 
   const form = useForm<z.infer<typeof formSchema>>({

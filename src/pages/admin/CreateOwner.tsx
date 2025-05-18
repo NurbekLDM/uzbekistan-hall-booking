@@ -18,10 +18,10 @@ import useOwnersStore, { OwnerWithPassword } from '@/store/ownersStore';
 import { toast } from 'sonner';
 
 const formSchema = z.object({
-  firstName: z.string().min(2, { message: 'First name is required' }),
-  lastName: z.string().min(2, { message: 'Last name is required' }),
+  first_name: z.string().min(2, { message: 'First name is required' }),
+  last_name: z.string().min(2, { message: 'Last name is required' }),
   username: z.string().min(2, { message: 'Username is required' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+  password: z.string().min(4, { message: 'Password must be at least 6 characters' }),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -37,8 +37,8 @@ const CreateOwner = () => {
   const form = useForm<OwnerFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
+      first_name: '',
+      last_name: '',
       username: '',
       password: '',
       confirmPassword: '',
@@ -47,11 +47,10 @@ const CreateOwner = () => {
 
   const handleSubmit = async (values: OwnerFormValues) => {
     try {
-      // We need to separate password from the rest of the owner data
-      // since password isn't part of the Owner type
+    
       const { confirmPassword, ...ownerData } = values;
       
-      // Now ownerData is of type OwnerWithPassword which can include password
+    
       await createOwner(ownerData);
       
       toast.success('Owner created successfully!');
@@ -85,7 +84,7 @@ const CreateOwner = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="firstName"
+                    name="first_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>First Name</FormLabel>
@@ -99,7 +98,7 @@ const CreateOwner = () => {
 
                   <FormField
                     control={form.control}
-                    name="lastName"
+                    name="last_name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Last Name</FormLabel>

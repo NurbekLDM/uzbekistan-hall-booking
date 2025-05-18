@@ -21,10 +21,10 @@ const AdminDashboard = () => {
     fetchOwners();
   }, [fetchHalls, fetchAllBookings, fetchOwners]);
 
-  // Count halls awaiting approval
+ 
   const pendingHallsCount = halls.filter(hall => !hall.approved).length;
 
-  // Count upcoming bookings
+ 
   const upcomingBookingsCount = bookings.filter(booking => booking.status === 'upcoming').length;
 
   return (
@@ -271,7 +271,7 @@ const AdminDashboard = () => {
                     <tbody className="divide-y divide-gray-200">
                       {owners.slice(0, 5).map((owner) => (
                         <tr key={owner.id}>
-                          <td className="px-6 py-4">{owner.firstName} {owner.lastName}</td>
+                          <td className="px-6 py-4">{owner.first_name} {owner.last_name}</td>
                           <td className="px-6 py-4">{owner.username}</td>
                           <td className="px-6 py-4">{owner.halls?.length || 0}</td>
                           <td className="px-6 py-4">

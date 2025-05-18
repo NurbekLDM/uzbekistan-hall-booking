@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { toast } from 'sonner';
 
@@ -6,34 +5,23 @@ const BASE_URL = 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  withCredentials: true,
 });
-
-// Request interceptor for adding auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
 
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message = error.response?.data?.message || 'Something went wrong';
-    toast.error(message);
+    const message = error.response?.data?.error || error.response?.data?.message || 'Something went wrong';
+    
+    // Avoid showing 401 errors during auth checks
+    if (!error.config.url.includes('/me') || error.response?.status !== 401) {
+      toast.error(message);
+    }
     
     // Handle token expiration
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+    if (error.response?.status === 401 && !error.config.url.includes('/login') && !error.config.url.includes('/me')) {
+      // Just redirect to login
       window.location.href = '/login';
     }
     

@@ -15,8 +15,10 @@ const UserDashboard = () => {
   const { bookings, filteredBookings, isLoading, fetchUserBookings, cancelBooking } = useBookingsStore();
   const { user } = useAuthStore();
 
+  const user_id = user?.id;
+
   useEffect(() => {
-    fetchUserBookings();
+    fetchUserBookings(user_id);
   }, [fetchUserBookings]);
 
   const handleCancelBooking = async (id: string) => {
@@ -44,7 +46,7 @@ const UserDashboard = () => {
         <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-serif font-bold">
-              Welcome, {user?.firstName || 'User'}
+              Welcome, {user?.first_name + ' '+ user?.last_name|| 'User'}
             </h1>
             <p className="text-gray-600">
               Manage your wedding hall bookings

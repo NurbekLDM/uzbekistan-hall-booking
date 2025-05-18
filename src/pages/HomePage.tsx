@@ -14,7 +14,7 @@ const HomePage = () => {
     fetchHalls();
   }, [fetchHalls]);
 
-  // Filter for only approved halls
+  
   useEffect(() => {
     if (halls.length > 0) {
       filterHalls({ approved: true });

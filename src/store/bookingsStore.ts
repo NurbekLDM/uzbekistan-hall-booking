@@ -30,8 +30,8 @@ interface BookingsState {
   
   // Actions
   fetchAllBookings: () => Promise<void>;
-  fetchHallBookings: (hallId: string) => Promise<void>;
-  fetchUserBookings: () => Promise<void>;
+  fetchHallBookings: (hallId: number) => Promise<void>;
+  fetchUserBookings: (user_id: string) => Promise<void>;
   createBooking: (bookingData: Partial<Booking>) => Promise<void>;
   cancelBooking: (id: string) => Promise<void>;
   setFilters: (filters: BookingFilter) => void;
@@ -48,31 +48,31 @@ const useBookingsStore = create<BookingsState>((set, get) => ({
   fetchAllBookings: async () => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await api.get('/admin/bookings');
+      const { data } = await api.get('/user/bookings');
       set({ bookings: data, filteredBookings: data, isLoading: false });
-      get().setFilters(get().filters); // Apply any existing filters
+      get().setFilters(get().filters); 
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
   },
   
-  fetchHallBookings: async (hallId: string) => {
+  fetchHallBookings: async (hallId: number) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await api.get(`/owner/getBookings?hallId=${hallId}`);
+      const { data } = await api.get(`user/bookings`);
       set({ bookings: data, filteredBookings: data, isLoading: false });
-      get().setFilters(get().filters); // Apply any existing filters
+      get().setFilters(get().filters); 
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }
   },
   
-  fetchUserBookings: async () => {
+  fetchUserBookings: async (user_id: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await api.get('/user/myBookings');
+      const { data } = await api.get(`/user/myBookings/${user_id}`);
       set({ bookings: data, filteredBookings: data, isLoading: false });
-      get().setFilters(get().filters); // Apply any existing filters
+      get().setFilters(get().filters);
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
     }

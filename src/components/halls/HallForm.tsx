@@ -1,11 +1,10 @@
+import { useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { X } from "lucide-react";
 
-import { useState } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { X } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -13,34 +12,60 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Hall, TASHKENT_DISTRICTS } from '@/store/hallsStore';
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+// Extend Hall type to include latitude and longitude if not already present
+import { TASHKENT_DISTRICTS } from "@/store/hallsStore";
+import MapPicker from "@/components/MapPicker"; // MapPicker.tsx faylingiz joylashgan yo'lni to'g'rilab qo'ying
 
-const formSchema = z.object({
-  name: z.string().min(2, { message: 'Hall name is required' }),
-  district: z.string().min(2, { message: 'District is required' }),
-  address: z.string().min(5, { message: 'Address is required' }),
-  capacity: z.coerce.number().min(1, { message: 'Capacity must be at least 1' }),
-  pricePerSeat: z.coerce.number().min(0, { message: 'Price can\'t be negative' }),
-  phone: z.string().min(5, { message: 'Phone number is required' }),
-});
-
-interface HallFormProps {
-  initialData?: Partial<Hall>;
-  onSubmit: (data: FormData) => void;
-  isLoading: boolean;
+interface Hall {
+  name: string;
+  district: string;
+  address: string;
+  capacity: number;
+  price: number;
+  phone: string;
+  images?: string[];
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
-export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Hall name is required" }),
+  district: z.string().min(1, { message: "District is required" }),
+  address: z.string().min(1, { message: "Address is required" }),
+  // capacity va price uchun z.coerce.number() dan foydalanamiz
+  capacity: z.coerce
+    .number()
+    .min(1, { message: "Capacity must be at least 1" }),
+  price: z.coerce.number().min(0, { message: "Price can't be negative" }),
+  phone: z.string().min(1, { message: "Phone is required" }),
+  latitude: z.coerce.number().nullable().optional(), // MapPicker uchun ham coerce qoldiramiz
+  longitude: z.coerce.number().nullable().optional(), // MapPicker uchun ham coerce qoldiramiz
+  // images maydoni FormData orqali alohida boshqariladi, schema'da bo'lishi shart emas agar faqat fayllar yuborilsa
+  // Agar mavjud image URL'lari ham yuborilsa, bu maydon kerak bo'lishi mumkin, lekin hozircha olib tashlaymiz
+  // images: z.array(z.string()).optional(), // Olib tashlandi
+});
+
+type HallFormProps = {
+  initialData?: Hall;
+  isLoading?: boolean;
+  onSubmit?: (data: FormData) => void; // <--- onSubmit FormData qabul qilishi kerak
+};
+
+const HallForm = ({
+  initialData,
+  isLoading = false,
+  onSubmit,
+}: HallFormProps) => {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>(
     initialData?.images || []
@@ -49,70 +74,113 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: initialData?.name || '',
-      district: initialData?.district || '',
-      address: initialData?.address || '',
+      name: initialData?.name || "",
+      district: initialData?.district || "",
+      address: initialData?.address || "",
       capacity: initialData?.capacity || 0,
-      pricePerSeat: initialData?.pricePerSeat || 0,
-      phone: initialData?.phone || '',
+      price: initialData?.price || 0,
+      phone: initialData?.phone || "",
+      // defaultValues'ga latitude va longitude'ni qo'shamiz
+      // initialData mavjud bo'lsa va latitude/longitude raqam bo'lsa, ularni ishlatamiz
+      latitude:
+        initialData?.latitude !== null &&
+        initialData?.latitude !== undefined &&
+        typeof initialData.latitude === "number"
+          ? initialData.latitude
+          : null,
+      longitude:
+        initialData?.longitude !== null &&
+        initialData?.longitude !== undefined &&
+        typeof initialData.longitude === "number"
+          ? initialData.longitude
+          : null,
+      // images: initialData?.images || [], // defaultValues dan olib tashlandi
     },
   });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
-      setSelectedImages((prev) => [...prev, ...filesArray]);
-      
-      // Create previews
-      const newPreviews = filesArray.map(file => URL.createObjectURL(file));
-      setPreviewImages((prev) => [...prev, ...newPreviews]);
+      setSelectedImages((prev: File[]) => [...prev, ...filesArray]);
+
+      const newPreviews = filesArray.map((file) => URL.createObjectURL(file));
+      setPreviewImages((prev: string[]) => [...prev, ...newPreviews]);
     }
   };
 
   const removeImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
-    
-    // Remove preview and revoke object URL to avoid memory leaks
+    // Tanlangan rasmlar ro'yxatidan o'chiramiz
+    setSelectedImages((prev: File[]) => prev.filter((_, i) => i !== index));
+
+    // Preview rasmlar ro'yxatidan o'chiramiz
     const urlToRemove = previewImages[index];
-    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
-    
+    setPreviewImages((prev: string[]) => prev.filter((_, i) => i !== index));
+
+    // Agar o'chirilayotgan rasm yangi yuklangan bo'lsa (ya'ni initialData images ichida bo'lmasa),
+    // uning Object URL'ini bo'shatamiz
     if (urlToRemove && !initialData?.images?.includes(urlToRemove)) {
       URL.revokeObjectURL(urlToRemove);
     }
   };
 
+  const handleLocationSelect = (lat: number, lng: number) => {
+    // Formning latitude va longitude maydonlarini yangilaymiz
+    form.setValue("latitude", lat, { shouldValidate: true }); // Validatsiyani yoqish
+    form.setValue("longitude", lng, { shouldValidate: true }); // Validatsiyani yoqish
+    // form.trigger("latitude"); // setValue da shouldValidate: true bo'lsa trigger shart emas
+    // form.trigger("longitude");
+  };
+
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     const formData = new FormData();
-    
-    // Add form values
+
+    // Add form values (bu loop latitude va longitude'ni ham avtomatik qo'shadi)
     Object.entries(values).forEach(([key, value]) => {
-      formData.append(key, value.toString());
+      // Nullable maydonlar uchun tekshiruv
+      if (value !== null && value !== undefined) {
+        // Raqam qiymatlarni FormData ga to'g'ri qo'shish
+        if (typeof value === "number") {
+          formData.append(key, value.toString());
+        } else {
+          formData.append(key, value as string);
+        }
+      }
     });
-    
-    // Add images
-    selectedImages.forEach(file => {
-      formData.append('images', file);
+
+    // Add newly selected images <--- BU QISM QO'SHILDI
+    selectedImages.forEach((file) => {
+      formData.append("images", file); // Backendda 'images' nomli maydon kutilyapti
     });
-    
-    // If there are existing images, add their URLs
+
+    // Add existing image URLs that are still in previewImages
+    // Backend agar existingImages nomli maydonni qabul qilsa, bu qism kerak
     if (initialData?.images) {
-      initialData.images.forEach((url, index) => {
-        // Only add URLs that are still in previewImages
+      initialData.images.forEach((url) => {
         if (previewImages.includes(url)) {
-          formData.append('existingImages', url);
+          formData.append("existingImages", url);
         }
       });
     }
-    
-    onSubmit(formData);
+
+    // onSubmit callback'ini FormData bilan chaqiramiz
+    if (onSubmit) {
+      onSubmit(formData); // <--- FormData yuboriladi
+    }
   };
+
+  // initialData?.latitude va initialData?.longitude raqam ekanligini tekshiramiz
+  const initialMapPosition =
+    typeof initialData?.latitude === "number" &&
+    typeof initialData?.longitude === "number"
+      ? {
+          lat: initialData.latitude as number,
+          lng: initialData.longitude as number,
+        }
+      : null;
 
   return (
     <Form {...form}>
-      <form 
-        onSubmit={form.handleSubmit(handleSubmit)} 
-        className="space-y-6"
-      >
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -126,35 +194,30 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name="district"
           render={({ field }) => (
             <FormItem>
               <FormLabel>District</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                value={field.value}
-              >
-                <FormControl>
+              <FormControl>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a district" />
                   </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {TASHKENT_DISTRICTS.map((district) => (
-                    <SelectItem key={district} value={district}>
-                      {district}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <SelectContent>
+                    {TASHKENT_DISTRICTS.map((district) => (
+                      <SelectItem key={district} value={district}>
+                        {district}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-
         <FormField
           control={form.control}
           name="address"
@@ -162,9 +225,9 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
             <FormItem>
               <FormLabel>Address</FormLabel>
               <FormControl>
-                <Textarea 
-                  placeholder="Enter full address" 
-                  {...field} 
+                <Textarea
+                  placeholder="Enter full address"
+                  {...field}
                   rows={3}
                 />
               </FormControl>
@@ -172,7 +235,6 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
             </FormItem>
           )}
         />
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -181,31 +243,58 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
               <FormItem>
                 <FormLabel>Capacity (seats)</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="Enter capacity" 
-                    min={1} 
-                    {...field} 
+                  {/* field.value null bo'lsa, inputga bo'sh string beramiz */}
+                  <Input
+                    type="number"
+                    placeholder="Enter capacity"
+                    min={1}
+                    {...field}
+                    value={
+                      field.value === null || field.value === undefined
+                        ? ""
+                        : field.value
+                    }
+                    onChange={(e) => {
+                      // Input qiymati string bo'ladi, parseFloat bilan raqamga o'giramiz
+                      const value =
+                        e.target.value === ""
+                          ? null
+                          : parseFloat(e.target.value);
+                      field.onChange(value);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-
           <FormField
             control={form.control}
-            name="pricePerSeat"
+            name="price"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Price Per Seat ($)</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="Enter price per seat" 
-                    min={0} 
+                  {/* field.value null bo'lsa, inputga bo'sh string beramiz */}
+                  <Input
+                    type="number"
+                    placeholder="Enter price per seat"
+                    min={0}
                     step="0.01"
-                    {...field} 
+                    {...field}
+                    value={
+                      field.value === null || field.value === undefined
+                        ? ""
+                        : field.value
+                    }
+                    onChange={(e) => {
+
+                      const value =
+                        e.target.value === ""
+                          ? null
+                          : parseFloat(e.target.value);
+                      field.onChange(value);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -213,7 +302,32 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
             )}
           />
         </div>
-
+        {/* Xarita orqali joy tanlash qismi */}
+        <FormItem>
+          <FormLabel>Location on Map</FormLabel>
+          <FormControl>
+            <MapPicker
+              initialPosition={initialMapPosition}
+              onLocationSelect={handleLocationSelect}
+            />
+          </FormControl>
+          {/* Latitude va Longitude qiymatlarini ko'rsatish (ixtiyoriy) */}
+          {form.watch("latitude") !== null &&
+            form.watch("latitude") !== undefined && (
+              <p className="text-sm text-gray-600">
+                Selected Location: Lat{" "}
+                {form.watch("latitude")?.toFixed(6)}, Lng{" "}
+                {form.watch("longitude")?.toFixed(6)}
+              </p>
+            )}
+          {/* Xarita uchun xato xabari (agar schema'da validatsiya bo'lsa) */}
+          {form.formState.errors.latitude && (
+            <FormMessage>{form.formState.errors.latitude.message}</FormMessage>
+          )}
+          {form.formState.errors.longitude && (
+            <FormMessage>{form.formState.errors.longitude.message}</FormMessage>
+          )}
+        </FormItem>
         <FormField
           control={form.control}
           name="phone"
@@ -221,16 +335,12 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
             <FormItem>
               <FormLabel>Phone Number</FormLabel>
               <FormControl>
-                <Input 
-                  placeholder="Enter phone number" 
-                  {...field} 
-                />
+                <Input placeholder="Enter phone number" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-
         <div>
           <FormLabel>Images</FormLabel>
           <div className="mt-2 border-2 border-dashed border-gray-300 rounded-md p-6">
@@ -272,7 +382,6 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
               </div>
             </label>
           </div>
-
           {/* Preview images */}
           {previewImages.length > 0 && (
             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -295,13 +404,14 @@ export function HallForm({ initialData, onSubmit, isLoading }: HallFormProps) {
             </div>
           )}
         </div>
-
         <div className="flex justify-end">
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Saving...' : 'Save Hall'}
+            {isLoading ? "Saving..." : "Save Hall"}
           </Button>
         </div>
       </form>
     </Form>
   );
-}
+};
+
+export default HallForm;

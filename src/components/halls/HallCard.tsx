@@ -16,7 +16,7 @@ const HallCard = ({ hall, showApprovalStatus = false }: HallCardProps) => {
       <div className="relative h-48 overflow-hidden">
         {hall.images && hall.images.length > 0 ? (
           <img 
-            src={hall.images[0]} 
+            src={`http://localhost:5000/${hall.images[0]}`} 
             alt={hall.name}
             className="w-full h-full object-cover" 
           />
@@ -46,7 +46,7 @@ const HallCard = ({ hall, showApprovalStatus = false }: HallCardProps) => {
           </div>
           <div className="flex flex-col items-end">
             <span className="text-sm text-gray-700">Price per guest</span>
-            <span className="font-semibold text-gold">${hall.pricePerSeat}</span>
+            <span className="font-semibold text-gold">${hall.price}</span>
           </div>
         </div>
       </CardContent>
