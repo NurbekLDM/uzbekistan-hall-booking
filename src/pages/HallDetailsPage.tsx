@@ -39,11 +39,13 @@ const HallDetailsPage = () => {
   }, [id, fetchHallById, fetchHallBookings]);
 
   const hallBookings = bookings.filter(booking => booking.hallId === id);
-  console.log(currentHall);
+  
+
+
 
   // BookingForm dan keladigan ma'lumotlar turi
   interface BookingFormData {
-    date: string; // yyyy-MM-dd formatida
+    date: string;
     guestCount: number;
     firstName: string;
     lastName: string;
@@ -52,36 +54,40 @@ const HallDetailsPage = () => {
   }
 
   const handleBookingSubmit = async (data: BookingFormData) => {
-    if (!isAuthenticated) {
-      toast.error('Please login to book this hall');
-      return;
-    }
-    if (!user?.id) {
-      toast.error('User ID not found. Please log in again.');
-      return;
-    }
+  if (!isAuthenticated) {
+    toast.error('Please login to book this hall');
+    return;
+  }
 
-    try {
-      await createBooking({
-        date: data.date, // BookingForm dan kelgan formatlangan sana
-        guest_count: data.guestCount,
-        first_name: data.firstName, // Maydon nomlari moslashtirildi
-        last_name: data.lastName,   // Maydon nomlari moslashtirildi
-        phone: data.phone,
-        hall_id: data.hallId, // BookingForm dan kelgan hallId
-        user_id: user.id,
-        hallName: currentHall?.name || '',
-      });
+  try {
+    console.log('Received booking data:', data); // Debug uchun
 
-      toast.success('Booking created successfully! Awaiting admin approval.');
-      setShowBookingForm(false);
-      // setSelectedBookingDate(undefined); // Endi kerak emas
-      fetchHallBookings(id); // Bookinglar ro'yxatini yangilash
-    } catch (error) {
-      toast.error('Failed to create booking');
-      console.error(error);
+    const bookingData = {
+      date: data.date,
+      guest_count: data.guestCount,
+      first_name: data.firstName,
+      last_name: data.lastName,
+      phone: data.phone,
+      hall_id: data.hallId,
+      hall_name: currentHall?.name || '',
+      user_id: user?.id
+    };
+
+    console.log('Sending booking data to API:', bookingData); // Debug uchun
+
+    await createBooking(bookingData);
+    
+    toast.success('Booking created successfully!');
+    setShowBookingForm(false);
+    // Bookinglar ro'yxatini yangilash
+    if (id) {
+      await fetchHallBookings(Number(id));
     }
-  };
+  } catch (error) {
+    console.error('Booking creation error:', error);
+    toast.error('Failed to create booking. Please try again.');
+  }
+};
 
   // HallDetailsPage dagi kalendar faqat mavjudlikni ko'rsatadi, tanlashni BookingForm ichidagi kalendar qiladi
   const handleDateSelectForDisplay = (date: Date) => {
@@ -277,7 +283,6 @@ const HallDetailsPage = () => {
                     bookings={hallBookings}
                     onSubmit={handleBookingSubmit}
                     isLoading={bookingsLoading}
-                    // selectedDate propini endi BookingForm ichida boshqariladi, bu yerda yuborish kerak emas
                   />
                 ) : (
                   <div className="text-center py-8 border rounded-lg">
@@ -304,9 +309,9 @@ const HallDetailsPage = () => {
                 <div className="max-w-md mx-auto">
                   <BookingCalendar
                     bookings={hallBookings}
-                    onSelectDate={handleDateSelectForDisplay} 
-                    selectedDate={undefined} 
-                    disableBooking={true} 
+                    onSelectDate={handleDateSelectForDisplay} // Faqat display uchun
+                    selectedDate={undefined} // Bu kalendar faqat band qilingan sanalarni ko'rsatadi, tanlashni emas
+                    disableBooking={true} // Bu kalendarda sanani tanlashni o'chirib qo'yamiz
                   />
                 </div>
               </div>

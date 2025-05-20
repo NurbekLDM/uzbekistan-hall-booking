@@ -32,10 +32,19 @@ interface BookingsState {
   fetchAllBookings: () => Promise<void>;
   fetchHallBookings: (hallId: number) => Promise<void>;
   fetchUserBookings: (user_id: string) => Promise<void>;
-  createBooking: (bookingData: Partial<Booking>) => Promise<void>;
+  createBooking: (bookingData: CreateBookingData) => Promise<void>;
   cancelBooking: (id: string) => Promise<void>;
   setFilters: (filters: BookingFilter) => void;
   resetFilters: () => void;
+}
+
+interface CreateBookingData {
+  date: string;
+  guestCount: number;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  hallId: string;
 }
 
 const useBookingsStore = create<BookingsState>((set, get) => ({
@@ -60,6 +69,7 @@ const useBookingsStore = create<BookingsState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data } = await api.get(`user/bookings/${hallId}`);
+      console.log('Fetched hall bookings:', data);
       set({ bookings: data, filteredBookings: data, isLoading: false });
       get().setFilters(get().filters); 
     } catch (error: any) {
@@ -78,14 +88,28 @@ const useBookingsStore = create<BookingsState>((set, get) => ({
     }
   },
   
-  createBooking: async (bookingData: Partial<Booking>) => {
-    set({ isLoading: true, error: null });
+   createBooking: async (data) => {
+    set({ isLoading: true });
     try {
-      await api.post('/createBooking', bookingData);
+      const response = await api.post('/bookings', {
+        date: data.date,
+        guest_count: data.guestCount,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        phone: data.phone,
+        hall_id: data.hallId
+      });
+      console.log('Booking created:', response.data);
       toast.success('Booking created successfully!');
-      set({ isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
+      
+      set((state) => ({
+        bookings: [...state.bookings, response.data],
+        isLoading: false
+      }));
+    } catch (error) {
+      set({ error: 'Failed to create booking' });
+     
+      console.log('Error creating booking:', error);
     }
   },
   

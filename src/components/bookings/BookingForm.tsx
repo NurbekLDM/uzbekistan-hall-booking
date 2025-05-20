@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -14,97 +15,120 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookingCalendar } from './BookingCalendar'; // O'zgartirish yo'q
-import { Booking } from '@/store/bookingsStore'; // Booking interface ni import qiling
-import { Hall } from '@/store/hallsStore'; // Hall interface ni import qiling
-import { toast } from 'sonner'; // Toast xabarlari uchun
+import { Card, CardContent } from '@/components/ui/card';
+import { BookingCalendar } from './BookingCalendar';
+import { Booking } from '@/store/bookingsStore';
+import { Hall } from '@/store/hallsStore';
 
-// BookingForm uchun Zod sxemasi
+const phoneRegex = /^\+998[0-9]{9}$/;
+
 const bookingFormSchema = z.object({
-  firstName: z.string().min(2, { message: 'First name is required' }),
-  lastName: z.string().min(2, { message: 'Last name is required' }),
-  phone: z.string().min(10, { message: 'Phone number must be at least 10 digits.' }), // <<<<< O'ZGARTIRILDI
-  guestCount: z.coerce.number()
-    .min(1, { message: 'Guest count must be at least 1' }),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  phone: z.string().regex(phoneRegex, "Invalid phone number format (+998XXXXXXXXX)"),
+  guestCount: z.number()
+    .min(1, "Must have at least 1 guest")
+    .max(1000, "Cannot exceed maximum capacity"),
+  date: z.string().min(1, "Date is required"),
+  hallId: z.string()
 });
 
-// BookingForm dan onSubmit ga yuboriladigan ma'lumotlar turi
-interface BookingFormValues extends z.infer<typeof bookingFormSchema> {
-  date: string; // Sanani string formatida yuboramiz (yyyy-MM-dd)
-  hallId: string; // Hall ID
-}
+type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 interface BookingFormProps {
   hall: Hall;
-  bookings: Booking[]; // Mavjud bookinglar (validatsiya uchun kerak bo'lishi mumkin)
-  onSubmit: (data: BookingFormValues) => void; // <<<<< Turi aniqlandi
+  bookings: Booking[];
+  onSubmit: (data: BookingFormValues) => void;
   isLoading: boolean;
 }
 
 export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingFormProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
 
-  const form = useForm<z.infer<typeof bookingFormSchema>>({
+  const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
       phone: '',
       guestCount: 1,
-    },
+      date: '',
+      hallId: hall.id
+    }
   });
 
-  function handleSubmit(values: z.infer<typeof bookingFormSchema>) {
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    form.setValue('date', format(date, 'yyyy-MM-dd'));
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    let cleaned = value.replace(/[^\d+]/g, "");
+    if (!cleaned.startsWith("+998")) {
+      if (cleaned.startsWith("998")) {
+        cleaned = "+" + cleaned;
+      } else if (cleaned.startsWith("8")) {
+        cleaned = "+998" + cleaned.substring(1);
+      } else {
+        cleaned = "+998" + cleaned;
+      }
+    }
+    return cleaned.slice(0, 13);
+  };
+
+  
+const handleSubmit = async (values: BookingFormValues) => {
+  try {
+    // Sanani tekshirish
     if (!selectedDate) {
-      toast.error("Please select a date for your booking."); // <<<<< Xato xabari
+      toast.error("Please select a date");
       return;
     }
 
-    // Sanani 'yyyy-MM-dd' formatida yuboramiz
-    const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+    // Mehmonlar sonini tekshirish
+    if (values.guestCount > hall.capacity) {
+      toast.error(`Guest count cannot exceed hall capacity of ${hall.capacity}`);
+      return;
+    }
 
-    const bookingData: BookingFormValues = {
+    // Formani yuborishdan oldin barcha ma'lumotlarni to'g'ri formatda tayyorlash
+    const bookingData = {
       ...values,
-      date: formattedDate,
-      hallId: hall.id, // Hall ID ni qo'shdik
+      date: format(selectedDate, 'yyyy-MM-dd'),
+      hallId: hall.id,
+      guestCount: Number(values.guestCount)
     };
 
-    onSubmit(bookingData);
+    console.log('Submitting booking data:', bookingData); // Debug uchun
+
+    // onSubmit funksiyasini chaqirish
+    await onSubmit(bookingData);
+
+  } catch (error) {
+    console.error('Booking submission error:', error);
+    toast.error('Failed to submit booking');
   }
+};
+
+
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Select Date</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <BookingCalendar
             bookings={bookings}
-            onSelectDate={setSelectedDate}
+            onSelectDate={handleDateSelect}
             selectedDate={selectedDate}
-            // BookingForm ichidagi kalendar faqat tanlash uchun, ma'lumot ko'rsatish uchun emas
-            disableBooking={false} // Bu yerda foydalanuvchi sanani tanlashi mumkin
+            disableBooking={false}
           />
-
-          {selectedDate && (
-            <div className="mt-4 p-3 bg-primary/10 rounded-md">
-              <p className="text-sm font-medium">
-                Selected Date: {format(selectedDate, 'PPP')}
-              </p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Booking Details</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -113,7 +137,7 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
                     <FormItem>
                       <FormLabel>First Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Your first name" {...field} />
+                        <Input placeholder="Enter first name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -127,7 +151,7 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
                     <FormItem>
                       <FormLabel>Last Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Your last name" {...field} />
+                        <Input placeholder="Enter last name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -142,7 +166,14 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
                   <FormItem>
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your phone number" {...field} />
+                      <Input
+                        placeholder="+998XXXXXXXXX"
+                        {...field}
+                        onChange={(e) => {
+                          const formatted = formatPhoneNumber(e.target.value);
+                          field.onChange(formatted);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -158,14 +189,10 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
                     <FormControl>
                       <Input
                         type="number"
-                        placeholder="Number of guests"
                         min={1}
                         max={hall.capacity}
                         {...field}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value); // <<<<< parseInt() ga o'zgartirildi
-                          field.onChange(isNaN(value) ? '' : value);
-                        }}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -191,9 +218,9 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
               <Button
                 type="submit"
                 className="w-full"
-                disabled={!selectedDate || isLoading} // Agar sana tanlanmagan bo'lsa, tugmani o'chirib qo'yamiz
+                disabled={isLoading || !selectedDate}
               >
-                {isLoading ? 'Booking...' : 'Book Now'}
+                {isLoading ? 'Processing...' : 'Confirm Booking'}
               </Button>
             </form>
           </Form>
