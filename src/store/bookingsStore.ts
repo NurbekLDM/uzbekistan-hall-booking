@@ -59,7 +59,7 @@ const useBookingsStore = create<BookingsState>((set, get) => ({
   fetchHallBookings: async (hallId: number) => {
     set({ isLoading: true, error: null });
     try {
-      const { data } = await api.get(`user/bookings`);
+      const { data } = await api.get(`user/bookings/${hallId}`);
       set({ bookings: data, filteredBookings: data, isLoading: false });
       get().setFilters(get().filters); 
     } catch (error: any) {
@@ -81,7 +81,7 @@ const useBookingsStore = create<BookingsState>((set, get) => ({
   createBooking: async (bookingData: Partial<Booking>) => {
     set({ isLoading: true, error: null });
     try {
-      await api.post('/bookings', bookingData);
+      await api.post('/createBooking', bookingData);
       toast.success('Booking created successfully!');
       set({ isLoading: false });
     } catch (error: any) {

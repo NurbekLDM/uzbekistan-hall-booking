@@ -41,6 +41,7 @@ const CreateHall = () => {
           <HallForm 
             onSubmit={handleSubmit}
             isLoading={isLoading}
+            
           />
         </div>
       </div>

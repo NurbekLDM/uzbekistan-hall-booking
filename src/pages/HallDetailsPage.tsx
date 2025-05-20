@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Calendar, Check, MapPin, Phone, Users } from 'lucide-react';
@@ -16,6 +15,7 @@ import { BookingCalendar } from '@/components/bookings/BookingCalendar';
 import { BookingForm } from '@/components/bookings/BookingForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MainLayout from '@/components/layout/MainLayout';
+import MapPicker from '@/components/MapPicker';
 
 import useHallsStore from '@/store/hallsStore';
 import useBookingsStore from '@/store/bookingsStore';
@@ -23,45 +23,74 @@ import useAuthStore from '@/store/authStore';
 import { toast } from 'sonner';
 
 const HallDetailsPage = () => {
-  const { id } = useParams<{ id: number }>();
+  const { id } = useParams<{ id: string }>(); // ID har doim string bo'ladi
   const { currentHall, isLoading: hallLoading, fetchHallById } = useHallsStore();
   const { bookings, isLoading: bookingsLoading, fetchHallBookings, createBooking } = useBookingsStore();
   const { user, isAuthenticated } = useAuthStore();
   const [activeTab, setActiveTab] = useState('details');
   const [showBookingForm, setShowBookingForm] = useState(false);
-
+  // selectedBookingDate state'ini HallDetailsPage dan olib tashladik, chunki BookingForm o'zi boshqaradi
 
   useEffect(() => {
     if (id) {
-      fetchHallById(id);
+      fetchHallById(Number(id)); // ID ni numberga o'tkazamiz
       fetchHallBookings(id);
     }
-  }, []);
-
+  }, [id, fetchHallById, fetchHallBookings]);
 
   const hallBookings = bookings.filter(booking => booking.hallId === id);
+  console.log(currentHall);
 
-  const handleBookingSubmit = async (data: any) => {
+  // BookingForm dan keladigan ma'lumotlar turi
+  interface BookingFormData {
+    date: string; // yyyy-MM-dd formatida
+    guestCount: number;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    hallId: string;
+  }
+
+  const handleBookingSubmit = async (data: BookingFormData) => {
     if (!isAuthenticated) {
       toast.error('Please login to book this hall');
+      return;
+    }
+    if (!user?.id) {
+      toast.error('User ID not found. Please log in again.');
       return;
     }
 
     try {
       await createBooking({
-        ...data,
-        hallId: id,
+        date: data.date, // BookingForm dan kelgan formatlangan sana
+        guest_count: data.guestCount,
+        first_name: data.firstName, // Maydon nomlari moslashtirildi
+        last_name: data.lastName,   // Maydon nomlari moslashtirildi
+        phone: data.phone,
+        hall_id: data.hallId, // BookingForm dan kelgan hallId
+        user_id: user.id,
         hallName: currentHall?.name || '',
       });
-      
-      toast.success('Booking created successfully!');
+
+      toast.success('Booking created successfully! Awaiting admin approval.');
       setShowBookingForm(false);
-      fetchHallBookings(id);
+      // setSelectedBookingDate(undefined); // Endi kerak emas
+      fetchHallBookings(id); // Bookinglar ro'yxatini yangilash
     } catch (error) {
       toast.error('Failed to create booking');
       console.error(error);
     }
   };
+
+  // HallDetailsPage dagi kalendar faqat mavjudlikni ko'rsatadi, tanlashni BookingForm ichidagi kalendar qiladi
+  const handleDateSelectForDisplay = (date: Date) => {
+    // Bu funksiya faqat kalendardagi sanani bosganda ishlaydi
+    // Agar booked bo'lsa, BookingDetails ni ochadi (BookingCalendar ichida boshqariladi)
+    // Agar bo'sh sana bo'lsa, hech narsa qilmaydi, chunki booking qilish "Make a Booking" tugmasi orqali boshlanadi
+    console.log("Date selected on display calendar:", date);
+  };
+
 
   if (hallLoading || !currentHall) {
     return (
@@ -72,6 +101,10 @@ const HallDetailsPage = () => {
       </MainLayout>
     );
   }
+
+  // currentHall.latitude va longitude string bo'lsa, ularni numberga o'tkazish
+  const lat = typeof currentHall.latitude === 'string' ? Number(currentHall.latitude) : currentHall.latitude;
+  const lng = typeof currentHall.longitude === 'string' ? Number(currentHall.longitude) : currentHall.longitude;
 
   return (
     <MainLayout>
@@ -98,7 +131,7 @@ const HallDetailsPage = () => {
             </Badge>
           </div>
         </div>
-        
+
         {/* Images */}
         {currentHall.images && currentHall.images.length > 0 ? (
           <div className="mb-8">
@@ -107,9 +140,9 @@ const HallDetailsPage = () => {
                 {currentHall.images.map((image, index) => (
                   <CarouselItem key={index} className="basis-full">
                     <div className="h-[400px] rounded-lg overflow-hidden">
-                      <img 
-                        src={`http://localhost:5000/${image}`} 
-                        alt={`${currentHall.name} - Photo ${index + 1}`} 
+                      <img
+                        src={`http://localhost:5000/${image}`}
+                        alt={`${currentHall.name} - Photo ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -132,17 +165,14 @@ const HallDetailsPage = () => {
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="availability">Availability</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="details" className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h2 className="text-2xl font-serif font-bold mb-4">About this venue</h2>
+
                 <div className="space-y-4">
-                  <p className="text-gray-600">
-                    This beautiful wedding hall located in the {currentHall.district} district of Tashkent 
-                    offers a spacious environment for your special day.
-                  </p>
-                  
+
+
                   <div className="space-y-2">
                     <h3 className="font-medium">Features:</h3>
                     <ul className="space-y-1">
@@ -164,19 +194,38 @@ const HallDetailsPage = () => {
                       </li>
                     </ul>
                   </div>
-                  
+
                   <div>
                     <h3 className="font-medium">Location:</h3>
                     <p className="text-gray-600">{currentHall.address}, {currentHall.district} District, Tashkent</p>
                   </div>
-                  
+
                   <div>
                     <h3 className="font-medium">Contact:</h3>
                     <p className="text-gray-600">{currentHall.phone}</p>
                   </div>
+                  <div>
+                    <h3 className="font-medium">Map:</h3>
+                    <div className="w-full h-64">
+                      {/* Latitude va Longitude ni Number ga o'tkazish */}
+                      {currentHall.latitude !== null && currentHall.longitude !== null &&
+                       !isNaN(lat) && !isNaN(lng) ? (
+                        <MapPicker
+                          initialPosition={{ lat: lat, lng: lng }}
+                          disabledMap={true}
+                          zoom={15}
+                          hallName={currentHall.name}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full bg-gray-100 rounded-lg text-gray-500">
+                          Map location not available.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-              
+
               <div>
                 <h2 className="text-2xl font-serif font-bold mb-4">Pricing Details</h2>
                 <div className="bg-gray-50 p-6 rounded-lg border">
@@ -193,7 +242,7 @@ const HallDetailsPage = () => {
                       <p className="text-sm text-gray-600 mb-4">
                         Example: For a wedding with 100 guests, the total would be ${currentHall.price * 100}.
                       </p>
-                      <Button 
+                      <Button
                         className="w-full"
                         onClick={() => {
                           setActiveTab('availability');
@@ -208,26 +257,27 @@ const HallDetailsPage = () => {
               </div>
             </div>
           </TabsContent>
-          
+
           <TabsContent value="availability" className="pt-6">
             {showBookingForm ? (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-serif font-bold">Book this Venue</h2>
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setShowBookingForm(false)}
                   >
                     Back to Calendar
                   </Button>
                 </div>
-                
+
                 {isAuthenticated && user?.role === 'user' ? (
-                  <BookingForm 
+                  <BookingForm
                     hall={currentHall}
                     bookings={hallBookings}
                     onSubmit={handleBookingSubmit}
                     isLoading={bookingsLoading}
+                    // selectedDate propini endi BookingForm ichida boshqariladi, bu yerda yuborish kerak emas
                   />
                 ) : (
                   <div className="text-center py-8 border rounded-lg">
@@ -250,11 +300,13 @@ const HallDetailsPage = () => {
                     Make a Booking
                   </Button>
                 </div>
-                
+
                 <div className="max-w-md mx-auto">
-                  <BookingCalendar 
-                    bookings={hallBookings} 
-                    disableBooking={true}
+                  <BookingCalendar
+                    bookings={hallBookings}
+                    onSelectDate={handleDateSelectForDisplay} 
+                    selectedDate={undefined} 
+                    disableBooking={true} 
                   />
                 </div>
               </div>

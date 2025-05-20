@@ -22,9 +22,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-// Extend Hall type to include latitude and longitude if not already present
+
 import { TASHKENT_DISTRICTS } from "@/store/hallsStore";
-import MapPicker from "@/components/MapPicker"; // MapPicker.tsx faylingiz joylashgan yo'lni to'g'rilab qo'ying
+import MapPicker from "@/components/MapPicker"; 
+import useAuthStore from "@/store/authStore";
 
 interface Hall {
   name: string;
@@ -36,29 +37,32 @@ interface Hall {
   images?: string[];
   latitude?: number | null;
   longitude?: number | null;
+  owner_id?: string;
 }
+
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Hall name is required" }),
   district: z.string().min(1, { message: "District is required" }),
   address: z.string().min(1, { message: "Address is required" }),
-  // capacity va price uchun z.coerce.number() dan foydalanamiz
+ 
   capacity: z.coerce
     .number()
     .min(1, { message: "Capacity must be at least 1" }),
   price: z.coerce.number().min(0, { message: "Price can't be negative" }),
   phone: z.string().min(1, { message: "Phone is required" }),
-  latitude: z.coerce.number().nullable().optional(), // MapPicker uchun ham coerce qoldiramiz
-  longitude: z.coerce.number().nullable().optional(), // MapPicker uchun ham coerce qoldiramiz
-  // images maydoni FormData orqali alohida boshqariladi, schema'da bo'lishi shart emas agar faqat fayllar yuborilsa
-  // Agar mavjud image URL'lari ham yuborilsa, bu maydon kerak bo'lishi mumkin, lekin hozircha olib tashlaymiz
-  // images: z.array(z.string()).optional(), // Olib tashlandi
+  latitude: z.coerce.number().nullable().optional(), 
+  longitude: z.coerce.number().nullable().optional(), 
+  owner_id: z.string().nullable().optional()
+  
+
+ 
 });
 
 type HallFormProps = {
   initialData?: Hall;
   isLoading?: boolean;
-  onSubmit?: (data: FormData) => void; // <--- onSubmit FormData qabul qilishi kerak
+  onSubmit?: (data: FormData) => void;
 };
 
 const HallForm = ({
@@ -70,6 +74,12 @@ const HallForm = ({
   const [previewImages, setPreviewImages] = useState<string[]>(
     initialData?.images || []
   );
+   console.log("HallForm ga kelgan initialData:", initialData);
+
+  const user = useAuthStore()
+  
+  
+  
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -80,8 +90,8 @@ const HallForm = ({
       capacity: initialData?.capacity || 0,
       price: initialData?.price || 0,
       phone: initialData?.phone || "",
-      // defaultValues'ga latitude va longitude'ni qo'shamiz
-      // initialData mavjud bo'lsa va latitude/longitude raqam bo'lsa, ularni ishlatamiz
+       owner_id: initialData?.owner_id || (user?.user.role === "owner" ? String(user.user.id) : undefined),
+  
       latitude:
         initialData?.latitude !== null &&
         initialData?.latitude !== undefined &&
@@ -94,7 +104,7 @@ const HallForm = ({
         typeof initialData.longitude === "number"
           ? initialData.longitude
           : null,
-      // images: initialData?.images || [], // defaultValues dan olib tashlandi
+   
     },
   });
 
@@ -109,32 +119,30 @@ const HallForm = ({
   };
 
   const removeImage = (index: number) => {
-    // Tanlangan rasmlar ro'yxatidan o'chiramiz
+   
     setSelectedImages((prev: File[]) => prev.filter((_, i) => i !== index));
 
-    // Preview rasmlar ro'yxatidan o'chiramiz
+   
     const urlToRemove = previewImages[index];
     setPreviewImages((prev: string[]) => prev.filter((_, i) => i !== index));
 
-    // Agar o'chirilayotgan rasm yangi yuklangan bo'lsa (ya'ni initialData images ichida bo'lmasa),
-    // uning Object URL'ini bo'shatamiz
+   
     if (urlToRemove && !initialData?.images?.includes(urlToRemove)) {
       URL.revokeObjectURL(urlToRemove);
     }
   };
 
   const handleLocationSelect = (lat: number, lng: number) => {
-    // Formning latitude va longitude maydonlarini yangilaymiz
-    form.setValue("latitude", lat, { shouldValidate: true }); // Validatsiyani yoqish
-    form.setValue("longitude", lng, { shouldValidate: true }); // Validatsiyani yoqish
-    // form.trigger("latitude"); // setValue da shouldValidate: true bo'lsa trigger shart emas
-    // form.trigger("longitude");
+
+    form.setValue("latitude", lat, { shouldValidate: true }); 
+    form.setValue("longitude", lng, { shouldValidate: true });
+
   };
 
   const handleSubmit = (values: z.infer<typeof formSchema>) => {
     const formData = new FormData();
 
-    // Add form values (bu loop latitude va longitude'ni ham avtomatik qo'shadi)
+   
     Object.entries(values).forEach(([key, value]) => {
       // Nullable maydonlar uchun tekshiruv
       if (value !== null && value !== undefined) {
@@ -146,14 +154,14 @@ const HallForm = ({
         }
       }
     });
+     
+      
 
-    // Add newly selected images <--- BU QISM QO'SHILDI
     selectedImages.forEach((file) => {
-      formData.append("images", file); // Backendda 'images' nomli maydon kutilyapti
+      formData.append("images", file); 
     });
 
-    // Add existing image URLs that are still in previewImages
-    // Backend agar existingImages nomli maydonni qabul qilsa, bu qism kerak
+
     if (initialData?.images) {
       initialData.images.forEach((url) => {
         if (previewImages.includes(url)) {
@@ -162,13 +170,13 @@ const HallForm = ({
       });
     }
 
-    // onSubmit callback'ini FormData bilan chaqiramiz
+    console.log("FormData:", formData);
     if (onSubmit) {
-      onSubmit(formData); // <--- FormData yuboriladi
+      onSubmit(formData); 
     }
   };
 
-  // initialData?.latitude va initialData?.longitude raqam ekanligini tekshiramiz
+
   const initialMapPosition =
     typeof initialData?.latitude === "number" &&
     typeof initialData?.longitude === "number"
@@ -178,6 +186,9 @@ const HallForm = ({
         }
       : null;
 
+      console.log(initialMapPosition, "initialMapPosition");
+
+       console.log("Form errors:", form.formState.errors); 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -255,7 +266,7 @@ const HallForm = ({
                         : field.value
                     }
                     onChange={(e) => {
-                      // Input qiymati string bo'ladi, parseFloat bilan raqamga o'giramiz
+
                       const value =
                         e.target.value === ""
                           ? null
@@ -275,7 +286,7 @@ const HallForm = ({
               <FormItem>
                 <FormLabel>Price Per Seat ($)</FormLabel>
                 <FormControl>
-                  {/* field.value null bo'lsa, inputga bo'sh string beramiz */}
+
                   <Input
                     type="number"
                     placeholder="Enter price per seat"
@@ -302,32 +313,46 @@ const HallForm = ({
             )}
           />
         </div>
-        {/* Xarita orqali joy tanlash qismi */}
-        <FormItem>
-          <FormLabel>Location on Map</FormLabel>
-          <FormControl>
-            <MapPicker
-              initialPosition={initialMapPosition}
-              onLocationSelect={handleLocationSelect}
-            />
-          </FormControl>
-          {/* Latitude va Longitude qiymatlarini ko'rsatish (ixtiyoriy) */}
-          {form.watch("latitude") !== null &&
-            form.watch("latitude") !== undefined && (
-              <p className="text-sm text-gray-600">
-                Selected Location: Lat{" "}
-                {form.watch("latitude")?.toFixed(6)}, Lng{" "}
-                {form.watch("longitude")?.toFixed(6)}
-              </p>
-            )}
-          {/* Xarita uchun xato xabari (agar schema'da validatsiya bo'lsa) */}
-          {form.formState.errors.latitude && (
-            <FormMessage>{form.formState.errors.latitude.message}</FormMessage>
-          )}
-          {form.formState.errors.longitude && (
-            <FormMessage>{form.formState.errors.longitude.message}</FormMessage>
-          )}
-        </FormItem>
+ 
+<FormItem>
+  <FormLabel>Location on Map</FormLabel>
+  <FormControl>
+   
+    <div className={`w-full h-[300px] rounded-lg overflow-hidden relative ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
+      <MapPicker
+        initialPosition={initialMapPosition}
+        onLocationSelect={handleLocationSelect}
+        disabledMap={isLoading}
+        zoom={13}
+      />
+     
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      )}
+    </div>
+  </FormControl>
+
+ 
+  {form.watch("latitude") !== null &&
+    form.watch("latitude") !== undefined && (
+      <p className="text-sm text-gray-600 mt-2"> 
+        Selected Location: Lat{" "}
+        {form.watch("latitude")?.toFixed(6)}, Lng{" "}
+        {form.watch("longitude")?.toFixed(6)}
+      </p>
+    )}
+
+  {form.formState.errors.latitude && (
+    <FormMessage>{form.formState.errors.latitude.message}</FormMessage>
+  )}
+  {form.formState.errors.longitude && (
+    <FormMessage>{form.formState.errors.longitude.message}</FormMessage>
+  )}
+</FormItem>
+
+
         <FormField
           control={form.control}
           name="phone"

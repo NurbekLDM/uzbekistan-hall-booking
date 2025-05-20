@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -16,30 +15,38 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BookingCalendar } from './BookingCalendar';
-import { Booking } from '@/store/bookingsStore';
-import { Hall } from '@/store/hallsStore';
+import { BookingCalendar } from './BookingCalendar'; // O'zgartirish yo'q
+import { Booking } from '@/store/bookingsStore'; // Booking interface ni import qiling
+import { Hall } from '@/store/hallsStore'; // Hall interface ni import qiling
+import { toast } from 'sonner'; // Toast xabarlari uchun
 
-const formSchema = z.object({
+// BookingForm uchun Zod sxemasi
+const bookingFormSchema = z.object({
   firstName: z.string().min(2, { message: 'First name is required' }),
   lastName: z.string().min(2, { message: 'Last name is required' }),
-  phone: z.string().min(6, { message: 'Phone number is required' }),
+  phone: z.string().min(10, { message: 'Phone number must be at least 10 digits.' }), // <<<<< O'ZGARTIRILDI
   guestCount: z.coerce.number()
     .min(1, { message: 'Guest count must be at least 1' }),
 });
 
+// BookingForm dan onSubmit ga yuboriladigan ma'lumotlar turi
+interface BookingFormValues extends z.infer<typeof bookingFormSchema> {
+  date: string; // Sanani string formatida yuboramiz (yyyy-MM-dd)
+  hallId: string; // Hall ID
+}
+
 interface BookingFormProps {
   hall: Hall;
-  bookings: Booking[];
-  onSubmit: (data: any) => void;
+  bookings: Booking[]; // Mavjud bookinglar (validatsiya uchun kerak bo'lishi mumkin)
+  onSubmit: (data: BookingFormValues) => void; // <<<<< Turi aniqlandi
   isLoading: boolean;
 }
 
 export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingFormProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof bookingFormSchema>>({
+    resolver: zodResolver(bookingFormSchema),
     defaultValues: {
       firstName: '',
       lastName: '',
@@ -48,15 +55,19 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
     },
   });
 
-  function handleSubmit(values: z.infer<typeof formSchema>) {
+  function handleSubmit(values: z.infer<typeof bookingFormSchema>) {
     if (!selectedDate) {
+      toast.error("Please select a date for your booking."); // <<<<< Xato xabari
       return;
     }
 
-    const bookingData = {
+    // Sanani 'yyyy-MM-dd' formatida yuboramiz
+    const formattedDate = format(selectedDate, 'yyyy-MM-dd');
+
+    const bookingData: BookingFormValues = {
       ...values,
-      date: format(selectedDate, 'yyyy-MM-dd'),
-      hallId: hall.id,
+      date: formattedDate,
+      hallId: hall.id, // Hall ID ni qo'shdik
     };
 
     onSubmit(bookingData);
@@ -69,12 +80,14 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
           <CardTitle>Select Date</CardTitle>
         </CardHeader>
         <CardContent>
-          <BookingCalendar 
-            bookings={bookings} 
+          <BookingCalendar
+            bookings={bookings}
             onSelectDate={setSelectedDate}
             selectedDate={selectedDate}
+            // BookingForm ichidagi kalendar faqat tanlash uchun, ma'lumot ko'rsatish uchun emas
+            disableBooking={false} // Bu yerda foydalanuvchi sanani tanlashi mumkin
           />
-          
+
           {selectedDate && (
             <div className="mt-4 p-3 bg-primary/10 rounded-md">
               <p className="text-sm font-medium">
@@ -143,12 +156,16 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
                   <FormItem>
                     <FormLabel>Number of Guests</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        placeholder="Number of guests" 
-                        min={1} 
-                        max={hall.capacity} 
-                        {...field} 
+                      <Input
+                        type="number"
+                        placeholder="Number of guests"
+                        min={1}
+                        max={hall.capacity}
+                        {...field}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value); // <<<<< parseInt() ga o'zgartirildi
+                          field.onChange(isNaN(value) ? '' : value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -171,10 +188,10 @@ export function BookingForm({ hall, bookings, onSubmit, isLoading }: BookingForm
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={!selectedDate || isLoading}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!selectedDate || isLoading} // Agar sana tanlanmagan bo'lsa, tugmani o'chirib qo'yamiz
               >
                 {isLoading ? 'Booking...' : 'Book Now'}
               </Button>

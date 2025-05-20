@@ -12,6 +12,8 @@ export interface Hall {
   images: string[];
   district: string;
   address: string;
+  latitude: number;
+  longitude: number;
   capacity: number;
   price: number;
   phone: string;
@@ -123,13 +125,8 @@ const useHallsStore = create<HallsState>((set, get) => ({
   fetchHallById: async (id: number) => {
   set({ isLoading: true, error: null });
   try {
-    // Use axios directly without authentication headers for this specific endpoint
-    const { data } = await api.get(`/user/halls/${id}`, {
-      headers: {
-        // Skip authentication for this request
-        skipAuth: true
-      }
-    });
+  
+    const { data } = await api.get(`/user/halls/${id}`);
     
     const formattedData = {
       ...data,
